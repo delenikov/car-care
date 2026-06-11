@@ -1,0 +1,7 @@
+package com.delenicode.carcare.vehicle;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record VehicleRequest(@NotNull Long customerId, @NotBlank String plateNumber, @NotBlank String make, @NotBlank String model, Integer modelYear, String vin) {
+}

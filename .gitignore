@@ -1,0 +1,150 @@
+# ==========================================
+
+# Maven / Spring Boot
+
+# ==========================================
+
+HELP.md
+
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+.mvn/wrapper/maven-wrapper.jar
+
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+
+*.log
+logs/
+
+# ==========================================
+
+# Node.js / Frontend
+
+# ==========================================
+
+node_modules/
+
+# Build outputs
+
+dist/
+build/
+.next/
+.nuxt/
+out/
+coverage/
+
+# Package managers
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Cache
+
+.npm/
+.pnpm-store/
+.parcel-cache/
+.cache/
+.eslintcache
+
+# ==========================================
+
+# Environment Variables
+
+# ==========================================
+
+.env
+.env.*
+!.env.example
+
+# ==========================================
+
+# IntelliJ IDEA
+
+# ==========================================
+
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ==========================================
+
+# Eclipse / STS
+
+# ==========================================
+
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+# ==========================================
+
+# VS Code
+
+# ==========================================
+
+.vscode/
+.history/
+
+# ==========================================
+
+# NetBeans
+
+# ==========================================
+
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+# ==========================================
+
+# macOS / Windows
+
+# ==========================================
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+
+# Testing / Reports
+
+# ==========================================
+
+surefire-reports/
+failsafe-reports/
+
+# ==========================================
+
+# Sonar / Static Analysis
+
+# ==========================================
+
+.sonar/
+sonar-report.json
+
+# ==========================================
+
+# Temporary Files
+
+# ==========================================
+
+*.tmp
+*.temp
+*.swp
+*~

@@ -1,0 +1,87 @@
+export type Role = 'ROLE_ADMIN' | 'ROLE_MANAGER' | 'ROLE_EMPLOYEE';
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  enabled: boolean;
+  failedLoginAttempts: number;
+  roles: Role[];
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+}
+
+export interface DashboardSummary {
+  customers: number;
+  vehicles: number;
+  appointments: number;
+  serviceRecords: number;
+  offers: number;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  loyaltyPoints: number;
+  notes?: string;
+}
+
+export interface Vehicle {
+  id: string;
+  customerId: string;
+  plate: string;
+  make: string;
+  model: string;
+  year: number;
+  vin?: string;
+}
+
+export interface Appointment {
+  id: string;
+  customerId: string;
+  vehicleId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  status: 'BOOKED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+}
+
+export interface ServiceRecord {
+  id: string;
+  vehicleId: string;
+  performedAt: string;
+  mileage: number;
+  summary: string;
+  cost: number;
+}
+
+export interface Offer {
+  id: string;
+  customerId: string;
+  vehicleId?: string;
+  title: string;
+  total: number;
+  status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
+}
+
+export interface DocumentRecord {
+  id: string;
+  customerId?: string;
+  vehicleId?: string;
+  title: string;
+  type: 'PDF' | 'IMAGE' | 'OTHER';
+  uploadedAt: string;
+}
+
+export interface LoyaltyRule {
+  id: string;
+  name: string;
+  pointsPerDenar: number;
+  active: boolean;
+}
