@@ -33,6 +33,9 @@ public class Appointment extends BaseEntity {
   @Column(nullable = false)
   private OffsetDateTime scheduledAt;
 
+  @Column(nullable = false)
+  private OffsetDateTime endsAt;
+
   @Column(nullable = false, length = 160)
   private String serviceType;
 
@@ -42,4 +45,11 @@ public class Appointment extends BaseEntity {
 
   @Column(length = 1000)
   private String notes;
+
+  @Column(length = 80, unique = true)
+  private String cancellationToken;
+
+  private OffsetDateTime cancellationExpiresAt;
+
+  private OffsetDateTime cancellationUsedAt;
 }

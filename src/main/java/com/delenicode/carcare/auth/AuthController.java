@@ -3,6 +3,8 @@ package com.delenicode.carcare.auth;
 import com.delenicode.carcare.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,5 +24,20 @@ public class AuthController {
   @PostMapping("/refresh")
   ApiResponse<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
     return ApiResponse.ok("Token refreshed", authService.refresh(request));
+  }
+
+  @PostMapping("/logout")
+  ApiResponse<Void> logout(@Valid @RequestBody RefreshRequest request) {
+    authService.logout(request);
+    return ApiResponse.ok("Logged out", null);
+  }
+
+  @PostMapping("/change-password")
+  ApiResponse<Void> changePassword(@AuthenticationPrincipal UserDetails user, @Valid @RequestBody ChangePasswordRequest request) {
+    if (user == null) {
+      throw new org.springframework.security.authentication.BadCredentialsException("Authentication required");
+    }
+    authService.changePassword(user.getUsername(), request);
+    return ApiResponse.ok("Password changed", null);
   }
 }

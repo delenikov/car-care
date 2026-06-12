@@ -7,11 +7,5 @@ export default defineConfig({
         proxy: {
             '/api': 'http://localhost:8080'
         }
-    },
-    test: {
-        environment: 'jsdom',
-        setupFiles: ['./vitest.setup.ts'],
-        globals: true,
-        css: true
     }
 });

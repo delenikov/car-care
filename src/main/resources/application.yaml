@@ -17,7 +17,7 @@ app:
   jwt:
     secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     access-minutes: 15
-    refresh-days: 14
+    refresh-days: 30
 springdoc:
   api-docs:
     path: /v3/api-docs

@@ -8,6 +8,6 @@ import java.util.Set;
 public record UserRequest(
     @Email @NotBlank String email,
     @NotBlank String fullName,
-    @Size(min = 8) String password,
+    @NotBlank @Size(min = 8) String password,
     Set<String> roles) {
 }

@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState, type ComponentProps } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin, { type EventDropArg } from '@fullcalendar/interaction';
+import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, Chip, Paper, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +23,8 @@ const schema = z.object({
   status: z.literal('BOOKED')
 });
 
-type AppointmentForm = z.infer<typeof schema>;
+type AppointmentForm = z.output<typeof schema>;
+type EventDropArg = Parameters<NonNullable<ComponentProps<typeof FullCalendar>['eventDrop']>>[0];
 
 const toLocalInput = (date: Date) => {
   const offset = date.getTimezoneOffset() * 60_000;
@@ -34,15 +35,17 @@ export function AppointmentsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const [slotDate, setSlotDate] = useState(new Date().toISOString().slice(0, 10));
   const { data = [], isLoading } = useQuery({ queryKey: ['appointments'], queryFn: appointmentsApi.list });
+  const availableQuery = useQuery({ queryKey: ['appointments', 'available', slotDate], queryFn: () => appointmentsApi.available(slotDate) });
   const createMutation = useMutation({ mutationFn: appointmentsApi.create });
   const rescheduleMutation = useMutation({ mutationFn: ({ id, startsAt, endsAt }: { id: string; startsAt: string; endsAt: string }) => appointmentsApi.reschedule(id, startsAt, endsAt) });
   const { control, handleSubmit, reset, setValue, formState } = useForm<AppointmentForm>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as never,
     defaultValues: {
       customerId: '',
       vehicleId: '',
-      title: '',
+      title: 'Minor Service',
       startsAt: toLocalInput(new Date()),
       endsAt: toLocalInput(new Date(Date.now() + 60 * 60_000)),
       status: 'BOOKED'
@@ -63,7 +66,10 @@ export function AppointmentsPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     await createMutation.mutateAsync(values);
-    await queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+      queryClient.invalidateQueries({ queryKey: ['appointments', 'available'] })
+    ]);
     reset({ ...values, title: '' });
     showToast(t('saved'));
   });
@@ -92,7 +98,7 @@ export function AppointmentsPage() {
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">
         <Box>
           <Typography variant="h2">{t('appointments')}</Typography>
-          <Typography color="text.secondary">Повлечете термин за презакажување. При грешка, календарот автоматски се враќа назад.</Typography>
+          <Typography color="text.secondary">Drag appointments to reschedule. Conflicting changes are rejected and restored.</Typography>
         </Box>
       </Stack>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: '1.7fr 0.8fr' }, gap: 3 }}>
@@ -116,11 +122,31 @@ export function AppointmentsPage() {
         <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 }, alignSelf: 'start' }}>
           <Stack spacing={2.5}>
             <Typography variant="h4">{t('bookAppointment')}</Typography>
-            <FormTextField control={control} name="customerId" label="ID на клиент" />
-            <FormTextField control={control} name="vehicleId" label="ID на возило" />
-            <FormTextField control={control} name="title" label="Опис" />
-            <FormTextField control={control} name="startsAt" label="Почеток" type="datetime-local" InputLabelProps={{ shrink: true }} />
-            <FormTextField control={control} name="endsAt" label="Крај" type="datetime-local" InputLabelProps={{ shrink: true }} />
+            <TextField
+              name="slotDate"
+              label="Available date"
+              type="date"
+              value={slotDate}
+              onChange={(event) => setSlotDate(event.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              {(availableQuery.data ?? []).map((slot) => (
+                <Chip
+                  key={slot.startsAt}
+                  label={new Date(slot.startsAt).toLocaleTimeString('mk-MK', { hour: '2-digit', minute: '2-digit' })}
+                  onClick={() => {
+                    setValue('startsAt', toLocalInput(new Date(slot.startsAt)));
+                    setValue('endsAt', toLocalInput(new Date(slot.endsAt)));
+                  }}
+                />
+              ))}
+            </Stack>
+            <FormTextField control={control} name="customerId" label="Customer ID" />
+            <FormTextField control={control} name="vehicleId" label="Vehicle ID" />
+            <FormTextField control={control} name="title" label="Service type" />
+            <FormTextField control={control} name="startsAt" label="Start" type="datetime-local" InputLabelProps={{ shrink: true }} />
+            <FormTextField control={control} name="endsAt" label="End" type="datetime-local" InputLabelProps={{ shrink: true }} />
             <Button type="submit" variant="contained" disabled={formState.isSubmitting}>
               {t('save')}
             </Button>

@@ -2,12 +2,16 @@ package com.delenicode.carcare.appointment;
 
 import com.delenicode.carcare.common.ApiResponse;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -21,8 +25,28 @@ public class AppointmentController {
     return ApiResponse.ok("Appointments loaded", appointments.findAll());
   }
 
+  @GetMapping("/available")
+  ApiResponse<List<AppointmentSlotResponse>> available(@RequestParam LocalDate date) {
+    return ApiResponse.ok("Available appointments loaded", appointments.availableSlots(date));
+  }
+
   @PostMapping
   ApiResponse<AppointmentResponse> create(@Valid @RequestBody AppointmentRequest request) {
     return ApiResponse.ok("Appointment created", appointments.create(request));
+  }
+
+  @PatchMapping("/{id}")
+  ApiResponse<AppointmentResponse> reschedule(@PathVariable Long id, @Valid @RequestBody AppointmentRescheduleRequest request) {
+    return ApiResponse.ok("Appointment rescheduled", appointments.reschedule(id, request));
+  }
+
+  @PostMapping("/cancel/{token}")
+  ApiResponse<AppointmentResponse> cancel(@PathVariable String token) {
+    return ApiResponse.ok("Appointment cancelled", appointments.cancelByToken(token));
+  }
+
+  @PostMapping("/reminders")
+  ApiResponse<ReminderSummaryResponse> sendReminders(@RequestParam LocalDate date) {
+    return ApiResponse.ok("Appointment reminders sent", appointments.sendReminders(date));
   }
 }

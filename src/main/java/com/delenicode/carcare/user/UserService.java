@@ -35,6 +35,33 @@ public class UserService {
   }
 
   @Transactional
+  public UserResponse update(Long id, UserUpdateRequest request) {
+    AppUser user = users.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
+    AppUser existing = users.findByEmail(request.email()).orElse(null);
+    if (existing != null && !existing.getId().equals(id)) {
+      throw new IllegalArgumentException("User email already exists");
+    }
+
+    user.setEmail(request.email());
+    user.setFullName(request.fullName());
+    user.setEnabled(request.enabled() == null || request.enabled());
+    if (request.password() != null && !request.password().isBlank()) {
+      user.setPasswordHash(passwordEncoder.encode(request.password()));
+    }
+    if (request.roles() != null && !request.roles().isEmpty()) {
+      user.setRoles(request.roles().stream().map(this::roleByName).collect(Collectors.toSet()));
+    }
+    return toResponse(users.save(user));
+  }
+
+  @Transactional
+  public void delete(Long id) {
+    AppUser user = users.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
+    user.setEnabled(false);
+    users.save(user);
+  }
+
+  @Transactional
   public UserResponse ensureAdminUser(String email, String fullName, String password) {
     AppUser user = users.findByEmail(email).orElse(null);
     Role adminRole = roleByName("ROLE_ADMIN");

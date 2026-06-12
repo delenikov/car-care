@@ -17,6 +17,12 @@ public class Customer extends BaseEntity {
   @Column(nullable = false, length = 160)
   private String fullName;
 
+  @Column(nullable = false, length = 80)
+  private String firstName;
+
+  @Column(nullable = false, length = 80)
+  private String lastName;
+
   @Column(nullable = false, unique = true, length = 160)
   private String email;
 
@@ -25,4 +31,7 @@ public class Customer extends BaseEntity {
 
   @Column(length = 300)
   private String address;
+
+  @Column(nullable = false)
+  private boolean deleted;
 }

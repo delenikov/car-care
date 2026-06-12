@@ -38,7 +38,16 @@ public class ServiceRecord extends BaseEntity {
   @Column(nullable = false, precision = 12, scale = 2)
   private BigDecimal totalAmount;
 
+  @Column(nullable = false, precision = 12, scale = 2)
+  private BigDecimal partsCost;
+
+  @Column(nullable = false, precision = 12, scale = 2)
+  private BigDecimal laborCost;
+
   private Integer odometer;
+
+  @Column(length = 2000)
+  private String replacedParts;
 
   @Column(length = 2000)
   private String notes;

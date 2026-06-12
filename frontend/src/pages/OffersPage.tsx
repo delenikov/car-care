@@ -14,11 +14,12 @@ const schema = z.object({
   customerId: z.string().min(1),
   vehicleId: z.string().optional(),
   title: z.string().min(1),
-  total: z.coerce.number().min(0),
+  partsCost: z.coerce.number().min(0),
+  laborCost: z.coerce.number().min(0),
   status: z.literal('DRAFT')
 });
 
-type OfferForm = z.infer<typeof schema>;
+type OfferForm = z.output<typeof schema>;
 
 export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'detail' }) {
   const { t } = useTranslation();
@@ -31,13 +32,13 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
   const createMutation = useMutation({ mutationFn: offersApi.create });
   const sendMutation = useMutation({ mutationFn: offersApi.send });
   const { control, handleSubmit, formState } = useForm<OfferForm>({
-    resolver: zodResolver(schema),
-    defaultValues: { customerId: '', vehicleId: '', title: '', total: 0, status: 'DRAFT' }
+    resolver: zodResolver(schema) as never,
+    defaultValues: { customerId: '', vehicleId: '', title: '', partsCost: 0, laborCost: 0, status: 'DRAFT' }
   });
 
   if (mode === 'create') {
     const onSubmit = handleSubmit(async (values) => {
-      const created = await createMutation.mutateAsync(values);
+      const created = await createMutation.mutateAsync({ ...values, total: values.partsCost + values.laborCost });
       await queryClient.invalidateQueries({ queryKey: ['offers'] });
       showToast(t('saved'));
       navigate(`/offers/${created.id}`);
@@ -48,12 +49,15 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         <Typography variant="h2">{t('createOffer')}</Typography>
         <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
-            <FormTextField control={control} name="customerId" label="ID на клиент" />
-            <FormTextField control={control} name="vehicleId" label="ID на возило" />
-            <FormTextField control={control} name="title" label="Наслов" />
-            <FormTextField control={control} name="total" label="Вкупно" type="number" />
+            <FormTextField control={control} name="customerId" label="Customer ID" />
+            <FormTextField control={control} name="vehicleId" label="Vehicle ID" />
+            <FormTextField control={control} name="title" label="Title" />
+            <FormTextField control={control} name="partsCost" label="Parts cost" type="number" />
+            <FormTextField control={control} name="laborCost" label="Labor cost" type="number" />
           </Box>
-          <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>{t('save')}</Button>
+          <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
+            {t('save')}
+          </Button>
         </Paper>
       </Stack>
     );
@@ -68,7 +72,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
           <Box>
             <Typography variant="h2">{offer.title}</Typography>
-            <Typography color="text.secondary">{offer.total.toLocaleString('mk-MK')} ден.</Typography>
+            <Typography color="text.secondary">{offer.total.toLocaleString('mk-MK')} den.</Typography>
           </Box>
           <Button
             variant="contained"
@@ -84,10 +88,12 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         </Stack>
         <Paper sx={{ p: { xs: 3, md: 4 } }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-            <OfferField label="Клиент" value={offer.customerId} />
-            <OfferField label="Возило" value={offer.vehicleId ?? '-'} />
-            <OfferField label="Статус" value={offer.status} />
-            <OfferField label="Вкупно" value={`${offer.total.toLocaleString('mk-MK')} ден.`} />
+            <OfferField label="Customer" value={offer.customerId} />
+            <OfferField label="Vehicle" value={offer.vehicleId ?? '-'} />
+            <OfferField label="Parts cost" value={`${offer.partsCost.toLocaleString('mk-MK')} den.`} />
+            <OfferField label="Labor cost" value={`${offer.laborCost.toLocaleString('mk-MK')} den.`} />
+            <OfferField label="Status" value={offer.status} />
+            <OfferField label="Total" value={`${offer.total.toLocaleString('mk-MK')} den.`} />
           </Box>
         </Paper>
       </Stack>
@@ -101,33 +107,52 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
         <Typography variant="h2">{t('offers')}</Typography>
-        <Button component={RouterLink} to="/offers/new" variant="contained">{t('createOffer')}</Button>
+        <Button component={RouterLink} to="/offers/new" variant="contained">
+          {t('createOffer')}
+        </Button>
       </Stack>
       {offers.length ? (
         <Paper sx={{ overflow: 'auto' }}>
           <Table>
-            <TableHead><TableRow><TableCell>Понуда</TableCell><TableCell>Клиент</TableCell><TableCell>Статус</TableCell><TableCell align="right">Вкупно</TableCell></TableRow></TableHead>
+            <TableHead>
+              <TableRow>
+                <TableCell>Offer</TableCell>
+                <TableCell>Customer</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Parts</TableCell>
+                <TableCell align="right">Labor</TableCell>
+                <TableCell align="right">Total</TableCell>
+              </TableRow>
+            </TableHead>
             <TableBody>
               {offers.map((offer) => (
                 <TableRow key={offer.id} hover component={RouterLink} to={`/offers/${offer.id}`} sx={{ cursor: 'pointer' }}>
                   <TableCell>{offer.title}</TableCell>
                   <TableCell>{offer.customerId}</TableCell>
-                  <TableCell><Chip label={offer.status} color={offer.status === 'SENT' ? 'secondary' : 'default'} size="small" /></TableCell>
-                  <TableCell align="right">{offer.total.toLocaleString('mk-MK')} ден.</TableCell>
+                  <TableCell>
+                    <Chip label={offer.status} color={offer.status === 'SENT' ? 'secondary' : 'default'} size="small" />
+                  </TableCell>
+                  <TableCell align="right">{offer.partsCost.toLocaleString('mk-MK')} den.</TableCell>
+                  <TableCell align="right">{offer.laborCost.toLocaleString('mk-MK')} den.</TableCell>
+                  <TableCell align="right">{offer.total.toLocaleString('mk-MK')} den.</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </Paper>
-      ) : <EmptyState />}
+      ) : (
+        <EmptyState />
+      )}
     </Stack>
   );
 }
 
 function OfferField({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 3 }}>
-      <Typography variant="body2" color="text.secondary">{label}</Typography>
+    <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
       <Typography fontWeight={700}>{value}</Typography>
     </Box>
   );

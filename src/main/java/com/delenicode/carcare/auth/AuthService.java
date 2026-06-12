@@ -8,6 +8,7 @@ import com.delenicode.carcare.user.Role;
 import com.delenicode.carcare.user.UserResponse;
 import com.delenicode.carcare.user.UserService;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,6 +17,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,7 @@ public class AuthService {
   private final JwtService jwtService;
   private final UserService userService;
   private final AuditService auditService;
+  private final PasswordEncoder passwordEncoder;
 
   @Transactional
   public AuthResponse login(LoginRequest request) {
@@ -59,6 +62,27 @@ public class AuthService {
     return tokensFor(stored.getUser());
   }
 
+  @Transactional
+  public void logout(RefreshRequest request) {
+    refreshTokens.findByTokenAndRevokedFalse(request.refreshToken()).ifPresent(token -> {
+      token.setRevoked(true);
+      auditService.record(token.getUser().getEmail(), "LOGOUT", "AppUser", token.getUser().getId(), "Refresh token revoked");
+    });
+  }
+
+  @Transactional
+  public void changePassword(String email, ChangePasswordRequest request) {
+    AppUser user = users.findByEmail(email).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+    if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+      auditService.record(email, "PASSWORD_CHANGE_FAILED", "AppUser", user.getId(), "Current password mismatch");
+      throw new BadCredentialsException("Invalid current password");
+    }
+    user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+    users.save(user);
+    revokeActiveRefreshTokens(user);
+    auditService.record(email, "PASSWORD_CHANGED", "AppUser", user.getId(), "Password changed and refresh tokens revoked");
+  }
+
   private AuthResponse tokensFor(AppUser user) {
     Set<String> roleNames = user.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
     String access = jwtService.createAccessToken(user.getEmail(), Map.of("roles", roleNames));
@@ -70,5 +94,10 @@ public class AuthService {
     refreshTokens.save(refreshToken);
     UserResponse response = userService.toResponse(user);
     return new AuthResponse(access, refresh, response);
+  }
+
+  private void revokeActiveRefreshTokens(AppUser user) {
+    List<RefreshToken> activeTokens = refreshTokens.findAllByUserIdAndRevokedFalse(user.getId());
+    activeTokens.forEach(token -> token.setRevoked(true));
   }
 }

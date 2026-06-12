@@ -5,5 +5,15 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record ServiceRecordRequest(@NotNull Long customerId, @NotNull Long vehicleId, @NotNull LocalDate serviceDate, @NotBlank String serviceType, @NotNull BigDecimal totalAmount, Integer odometer, String notes) {
+public record ServiceRecordRequest(
+    @NotNull Long customerId,
+    @NotNull Long vehicleId,
+    @NotNull LocalDate serviceDate,
+    @NotBlank String serviceType,
+    BigDecimal partsCost,
+    BigDecimal laborCost,
+    BigDecimal totalAmount,
+    Integer odometer,
+    String replacedParts,
+    String notes) {
 }

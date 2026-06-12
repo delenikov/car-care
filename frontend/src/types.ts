@@ -49,16 +49,27 @@ export interface Appointment {
   title: string;
   startsAt: string;
   endsAt: string;
-  status: 'BOOKED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'BOOKED' | 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  cancellationUrl?: string;
+}
+
+export interface AppointmentSlot {
+  startsAt: string;
+  endsAt: string;
 }
 
 export interface ServiceRecord {
   id: string;
+  customerId: string;
   vehicleId: string;
   performedAt: string;
   mileage: number;
   summary: string;
   cost: number;
+  partsCost: number;
+  laborCost: number;
+  replacedParts?: string;
+  notes?: string;
 }
 
 export interface Offer {
@@ -67,6 +78,8 @@ export interface Offer {
   vehicleId?: string;
   title: string;
   total: number;
+  partsCost: number;
+  laborCost: number;
   status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
 }
 

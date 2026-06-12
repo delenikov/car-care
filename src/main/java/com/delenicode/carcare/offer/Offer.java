@@ -40,6 +40,12 @@ public class Offer extends BaseEntity {
   @Column(nullable = false, precision = 12, scale = 2)
   private BigDecimal amount;
 
+  @Column(nullable = false, precision = 12, scale = 2)
+  private BigDecimal partsCost;
+
+  @Column(nullable = false, precision = 12, scale = 2)
+  private BigDecimal laborCost;
+
   private LocalDate expiresOn;
 
   @Enumerated(EnumType.STRING)
