@@ -125,20 +125,20 @@ function CustomerPage({ mode }: { mode: Mode }) {
           >
             <TextField
               name="firstName"
-              label="First name"
+              label={t('firstName')}
               value={filters.firstName}
               onChange={(event) => setFilters((current) => ({ ...current, firstName: event.target.value }))}
               fullWidth
             />
             <TextField
               name="lastName"
-              label="Last name"
+              label={t('lastName')}
               value={filters.lastName}
               onChange={(event) => setFilters((current) => ({ ...current, lastName: event.target.value }))}
               fullWidth
             />
             <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
-              Search
+              {t('search')}
             </Button>
           </Stack>
         </Paper>
@@ -166,15 +166,15 @@ function CustomerPage({ mode }: { mode: Mode }) {
                 navigate('/customers');
               }}
             >
-              Delete
+              {t('delete')}
             </Button>
           </Stack>
           <DetailCard
             rows={[
-              ['Phone', detailQuery.data.phone],
-              ['Email', detailQuery.data.email ?? '-'],
-              ['Loyalty points', String(detailQuery.data.loyaltyPoints)],
-              ['Address', detailQuery.data.notes ?? '-']
+              [t('phone'), detailQuery.data.phone],
+              [t('email'), detailQuery.data.email ?? '-'],
+              [t('loyaltyPoints'), String(detailQuery.data.loyaltyPoints)],
+              [t('address'), detailQuery.data.notes ?? '-']
             ]}
           />
           <RelatedVehicles vehicles={vehiclesQuery.data ?? []} loading={vehiclesQuery.isLoading} />
@@ -195,11 +195,11 @@ function CustomerPage({ mode }: { mode: Mode }) {
     <ResourceFrame title={mode === 'create' ? `${t('create')} ${t('customers')}` : `${t('edit')} ${detailQuery.data?.name ?? ''}`}>
       <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
-          <FormTextField control={control} name="name" label="Full name" />
-          <FormTextField control={control} name="phone" label="Phone" />
-          <FormTextField control={control} name="email" label="Email" />
-          <FormTextField control={control} name="loyaltyPoints" label="Loyalty points" type="number" />
-          <FormTextField control={control} name="notes" label="Address" multiline minRows={3} sx={{ gridColumn: { md: '1 / -1' } }} />
+          <FormTextField control={control} name="name" label={t('fullName')} />
+          <FormTextField control={control} name="phone" label={t('phone')} />
+          <FormTextField control={control} name="email" label={t('email')} />
+          <FormTextField control={control} name="loyaltyPoints" label={t('loyaltyPoints')} type="number" />
+          <FormTextField control={control} name="notes" label={t('address')} multiline minRows={3} sx={{ gridColumn: { md: '1 / -1' } }} />
         </Box>
         <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
           {t('save')}
@@ -270,14 +270,14 @@ function VehiclePage({ mode }: { mode: Mode }) {
           >
             <TextField
               name="vehicleSearch"
-              label="Search"
-              placeholder="Search by license plate, VIN, or owner..."
+              label={t('search')}
+              placeholder={t('searchVehiclePlaceholder')}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               InputProps={{
                 endAdornment: searchTerm ? (
                   <InputAdornment position="end">
-                    <IconButton aria-label="Clear vehicle query" edge="end" onClick={() => setSearchTerm('')}>
+                    <IconButton aria-label={t('clearVehicleQuery')} edge="end" onClick={() => setSearchTerm('')}>
                       <ClearRoundedIcon />
                     </IconButton>
                   </InputAdornment>
@@ -286,10 +286,10 @@ function VehiclePage({ mode }: { mode: Mode }) {
               fullWidth
             />
             <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
-              Search
+              {t('search')}
             </Button>
             <Button type="button" variant="text" startIcon={<RestartAltRoundedIcon />} onClick={resetSearch} sx={{ minWidth: 120 }}>
-              Reset
+              {t('reset')}
             </Button>
           </Stack>
         </Paper>
@@ -311,12 +311,12 @@ function VehiclePage({ mode }: { mode: Mode }) {
           </Stack>
           <DetailCard
             rows={[
-              ['License plate', detailQuery.data.plate],
-              ['Owner', detailQuery.data.customerName ?? detailQuery.data.customerId],
-              ['Year', String(detailQuery.data.year)],
-              ['VIN', detailQuery.data.vin ?? '-'],
-              ['Fuel type', detailQuery.data.fuelType ?? '-'],
-              ['Engine', detailQuery.data.engine ?? '-']
+              [t('licensePlate'), detailQuery.data.plate],
+              [t('owner'), detailQuery.data.customerName ?? detailQuery.data.customerId],
+              [t('year'), String(detailQuery.data.year)],
+              [t('vin'), detailQuery.data.vin ?? '-'],
+              [t('fuelType'), detailQuery.data.fuelType ?? '-'],
+              [t('engine'), detailQuery.data.engine ?? '-']
             ]}
           />
           <ServiceHistory records={historyQuery.data ?? []} loading={historyQuery.isLoading} />
@@ -353,7 +353,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Customer"
+                      label={t('customer')}
                       error={Boolean(fieldState.error)}
                       helperText={fieldState.error?.message}
                       InputProps={{
@@ -371,13 +371,13 @@ function VehiclePage({ mode }: { mode: Mode }) {
               );
             }}
           />
-          <FormTextField control={control} name="plate" label="License plate" />
-          <FormTextField control={control} name="make" label="Brand" />
-          <FormTextField control={control} name="model" label="Model" />
-          <FormTextField control={control} name="year" label="Year" type="number" />
-          <FormTextField control={control} name="vin" label="VIN" />
-          <FormTextField control={control} name="fuelType" label="Fuel type" />
-          <FormTextField control={control} name="engine" label="Engine" />
+          <FormTextField control={control} name="plate" label={t('licensePlate')} />
+          <FormTextField control={control} name="make" label={t('brand')} />
+          <FormTextField control={control} name="model" label={t('model')} />
+          <FormTextField control={control} name="year" label={t('year')} type="number" />
+          <FormTextField control={control} name="vin" label={t('vin')} />
+          <FormTextField control={control} name="fuelType" label={t('fuelType')} />
+          <FormTextField control={control} name="engine" label={t('engine')} />
         </Box>
         <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
           {t('save')}
@@ -404,16 +404,17 @@ function ResourceFrame({ title, children, actionLabel, actionTo }: { title: stri
 }
 
 function CustomerTable({ customers }: { customers: Customer[] }) {
+  const { t } = useTranslation();
   if (!customers.length) return <EmptyState />;
   return (
     <Paper sx={{ overflow: 'auto' }}>
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>Customer</TableCell>
-            <TableCell>Phone</TableCell>
-            <TableCell>Loyalty</TableCell>
-            <TableCell align="right">Action</TableCell>
+            <TableCell>{t('customer')}</TableCell>
+            <TableCell>{t('phone')}</TableCell>
+            <TableCell>{t('loyalty')}</TableCell>
+            <TableCell align="right">{t('action')}</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -426,7 +427,7 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
               </TableCell>
               <TableCell align="right">
                 <Button component={RouterLink} to={`/customers/${customer.id}`}>
-                  Details
+                  {t('details')}
                 </Button>
               </TableCell>
             </TableRow>
@@ -438,20 +439,21 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
 }
 
 function VehicleTable({ vehicles, searchTerm }: { vehicles: Vehicle[]; searchTerm: string }) {
+  const { t } = useTranslation();
   if (!vehicles.length) return <EmptyState />;
   return (
     <Paper sx={{ overflow: 'auto' }}>
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>License plate</TableCell>
-            <TableCell>VIN</TableCell>
-            <TableCell>Owner</TableCell>
-            <TableCell>Vehicle</TableCell>
-            <TableCell>Year</TableCell>
-            <TableCell>Fuel</TableCell>
-            <TableCell>Engine</TableCell>
-            <TableCell align="right">Action</TableCell>
+            <TableCell>{t('licensePlate')}</TableCell>
+            <TableCell>{t('vin')}</TableCell>
+            <TableCell>{t('owner')}</TableCell>
+            <TableCell>{t('vehicle')}</TableCell>
+            <TableCell>{t('year')}</TableCell>
+            <TableCell>{t('fuel')}</TableCell>
+            <TableCell>{t('engine')}</TableCell>
+            <TableCell align="right">{t('action')}</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -474,7 +476,7 @@ function VehicleTable({ vehicles, searchTerm }: { vehicles: Vehicle[]; searchTer
               <TableCell>{vehicle.engine ?? '-'}</TableCell>
               <TableCell align="right">
                 <Button component={RouterLink} to={`/vehicles/${vehicle.id}`}>
-                  Details
+                  {t('details')}
                 </Button>
               </TableCell>
             </TableRow>
@@ -509,10 +511,11 @@ function HighlightedText({ value, query }: { value: string; query: string }) {
 }
 
 function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: boolean }) {
+  const { t } = useTranslation();
   return (
     <Paper sx={{ p: { xs: 3, md: 4 } }}>
       <Typography variant="h3" sx={{ mb: 2 }}>
-        Customer vehicles
+        {t('customerVehicles')}
       </Typography>
       {loading ? (
         <LoadingState />
@@ -520,12 +523,12 @@ function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: 
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>License plate</TableCell>
-              <TableCell>Vehicle</TableCell>
-              <TableCell>Year</TableCell>
-              <TableCell>Fuel</TableCell>
-              <TableCell>Engine</TableCell>
-              <TableCell align="right">Action</TableCell>
+              <TableCell>{t('licensePlate')}</TableCell>
+              <TableCell>{t('vehicle')}</TableCell>
+              <TableCell>{t('year')}</TableCell>
+              <TableCell>{t('fuel')}</TableCell>
+              <TableCell>{t('engine')}</TableCell>
+              <TableCell align="right">{t('action')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -540,7 +543,7 @@ function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: 
                 <TableCell>{vehicle.engine ?? '-'}</TableCell>
                 <TableCell align="right">
                   <Button component={RouterLink} to={`/services/new?customerId=${vehicle.customerId}&vehicleId=${vehicle.id}`}>
-                    New service
+                    {t('newService')}
                   </Button>
                 </TableCell>
               </TableRow>
@@ -555,10 +558,11 @@ function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: 
 }
 
 function ServiceHistory({ records, loading }: { records: ServiceRecord[]; loading: boolean }) {
+  const { t } = useTranslation();
   return (
     <Paper sx={{ p: { xs: 3, md: 4 } }}>
       <Typography variant="h3" sx={{ mb: 2 }}>
-        Service history
+        {t('serviceHistory')}
       </Typography>
       {loading ? (
         <LoadingState />
@@ -566,10 +570,10 @@ function ServiceHistory({ records, loading }: { records: ServiceRecord[]; loadin
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Service</TableCell>
-              <TableCell>Mileage</TableCell>
-              <TableCell align="right">Total</TableCell>
+              <TableCell>{t('date')}</TableCell>
+              <TableCell>{t('service')}</TableCell>
+              <TableCell>{t('mileage')}</TableCell>
+              <TableCell align="right">{t('total')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

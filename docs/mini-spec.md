@@ -26,6 +26,8 @@ The system will support searching for customers and vehicles using:
 
 Service staff will be able to create and send service quotations to customers via email. Each quotation will clearly display:
 
+* Spare part names
+* Individual spare part prices
 * Spare parts costs
 * Labor costs
 * Total service cost

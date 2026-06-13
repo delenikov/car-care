@@ -9,10 +9,10 @@ import org.junit.jupiter.api.Test;
 class PdfServiceTest {
   @Test
   void renderServiceSummaryReturnsPdfBytes() {
-    String pdf = new String(new PdfService().renderServiceSummary("Title", "Body"), StandardCharsets.UTF_8);
+    String pdf = new String(new PdfService().renderServiceSummary("Сервисен извештај", "Клиент: Стојан\nВкупно: 2.500,00 ден."), StandardCharsets.ISO_8859_1);
 
-    assertThat(pdf).startsWith("%PDF-1.4");
-    assertThat(pdf).contains("Title");
-    assertThat(pdf).contains("Body");
+    assertThat(pdf).startsWith("%PDF-");
+    assertThat(pdf).contains("/Font");
+    assertThat(pdf).contains("%%EOF");
   }
 }

@@ -45,7 +45,7 @@ const schema = z.object({
 
 type ServiceForm = z.output<typeof schema>;
 
-const customerLabel = (customer: Customer | null) => (customer ? `${customer.name}${customer.phone ? ` - ${customer.phone}` : ''}` : '');
+const customerLabel = (customer: Customer | null) => customer?.name ?? '';
 const vehicleLabel = (vehicle: Vehicle | null) =>
   vehicle ? `${vehicle.plate} - ${vehicle.make} ${vehicle.model}${vehicle.year ? ` (${vehicle.year})` : ''}` : '';
 const sumParts = (parts: Array<{ price?: number | string }>) => parts.reduce((total, part) => total + (Number(part.price) || 0), 0);
@@ -60,7 +60,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
   const listQuery = useQuery({ queryKey: ['service-records'], queryFn: serviceRecordsApi.list, enabled: mode === 'list' });
   const detailQuery = useQuery({ queryKey: ['service-records', id], queryFn: () => serviceRecordsApi.get(id!), enabled: mode === 'detail' && Boolean(id) });
   const createMutation = useMutation({ mutationFn: serviceRecordsApi.create });
-  const { control, handleSubmit, setValue, formState } = useForm<ServiceForm>({
+  const { clearErrors, control, handleSubmit, setValue, formState } = useForm<ServiceForm>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
       customerId: searchParams.get('customerId') ?? '',
@@ -87,8 +87,8 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
   });
   const customers = customersQuery.data ?? [];
   const vehicles = vehiclesQuery.data ?? [];
-  const selectedCustomer = customers.find((customer) => customer.id === selectedCustomerId) ?? null;
-  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? null;
+  const selectedCustomer = customers.find((customer) => String(customer.id) === selectedCustomerId) ?? null;
+  const selectedVehicle = vehicles.find((vehicle) => String(vehicle.id) === selectedVehicleId) ?? null;
   const partsCost = sumParts(watchedParts);
   const totalCost = partsCost + (Number(watchedLaborCost) || 0);
 
@@ -123,15 +123,16 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
                   value={selectedCustomer}
                   loading={customersQuery.isLoading}
                   getOptionLabel={customerLabel}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
                   onChange={(_, customer) => {
-                    field.onChange(customer?.id ?? '');
-                    setValue('vehicleId', '', { shouldValidate: true });
+                    field.onChange(customer ? String(customer.id) : '');
+                    setValue('vehicleId', '', { shouldDirty: true, shouldValidate: false });
+                    clearErrors('vehicleId');
                   }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Customer"
+                      label={t('customer')}
                       inputRef={field.ref}
                       name={field.name}
                       onBlur={field.onBlur}
@@ -152,17 +153,22 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
                   loading={vehiclesQuery.isLoading}
                   disabled={!selectedCustomerId}
                   getOptionLabel={vehicleLabel}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  onChange={(_, vehicle) => field.onChange(vehicle?.id ?? '')}
+                  isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                  onChange={(_, vehicle) => {
+                    field.onChange(vehicle ? String(vehicle.id) : '');
+                    if (vehicle) {
+                      clearErrors('vehicleId');
+                    }
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Vehicle"
+                      label={t('vehicle')}
                       inputRef={field.ref}
                       name={field.name}
                       onBlur={field.onBlur}
                       error={Boolean(fieldState.error)}
-                      helperText={fieldState.error?.message ?? (!selectedCustomerId ? 'Select customer first' : undefined)}
+                      helperText={fieldState.error?.message ?? (!selectedCustomerId ? t('selectCustomerFirst') : undefined)}
                     />
                   )}
                 />
@@ -174,7 +180,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
               render={({ field, fieldState }) => (
                 <DateInput
                   name={field.name}
-                  label="Date"
+                  label={t('date')}
                   value={field.value}
                   helperText={fieldState.error?.message ?? 'DD.MM.YYYY'}
                   error={Boolean(fieldState.error)}
@@ -190,7 +196,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
               render={({ field, fieldState }) => (
                 <TimeInput
                   name={field.name}
-                  label="Time"
+                  label={t('time')}
                   value={field.value}
                   helperText={fieldState.error?.message ?? 'HH:mm'}
                   error={Boolean(fieldState.error)}
@@ -203,53 +209,53 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
             <FormTextField
               control={control}
               name="mileage"
-              label="Mileage"
+              label={t('mileage')}
               type="number"
               InputProps={{ endAdornment: <InputAdornment position="end">km</InputAdornment> }}
             />
-            <FormTextField control={control} name="summary" label="Service type" />
+            <FormTextField control={control} name="summary" label={t('serviceType')} />
             <Box sx={{ gridColumn: { md: '1 / -1' } }}>
               <Stack spacing={2}>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }}>
-                  <Typography variant="h4">Replaced parts</Typography>
+                  <Typography variant="h4">{t('replacedParts')}</Typography>
                   <Button type="button" variant="outlined" startIcon={<AddRoundedIcon />} onClick={() => appendPart({ name: '', price: 0 })}>
-                    Add part
+                    {t('addPart')}
                   </Button>
                 </Stack>
                 {partFields.length ? (
                   <Stack spacing={1.5}>
                     {partFields.map((part, index) => (
                       <Box key={part.id} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 180px auto' }, gap: 1.5, alignItems: 'start' }}>
-                        <FormTextField control={control} name={`parts.${index}.name`} label="Part name" />
+                        <FormTextField control={control} name={`parts.${index}.name`} label={t('partName')} />
                         <FormTextField
                           control={control}
                           name={`parts.${index}.price`}
-                          label="Price"
+                          label={t('price')}
                           type="number"
                           InputProps={{ endAdornment: <InputAdornment position="end">den.</InputAdornment> }}
                         />
-                        <IconButton aria-label={`Remove part ${index + 1}`} onClick={() => removePart(index)} sx={{ mt: { sm: 1 } }}>
+                        <IconButton aria-label={`${t('delete')} ${index + 1}`} onClick={() => removePart(index)} sx={{ mt: { sm: 1 } }}>
                           <DeleteRoundedIcon />
                         </IconButton>
                       </Box>
                     ))}
                   </Stack>
                 ) : (
-                  <Typography color="text.secondary">No replaced parts added.</Typography>
+                  <Typography color="text.secondary">{t('noReplacedParts')}</Typography>
                 )}
                 <Divider />
-                <Typography fontWeight={700}>Parts total: {partsCost.toLocaleString('mk-MK')} den.</Typography>
+                <Typography fontWeight={700}>{t('partsTotal', { amount: partsCost.toLocaleString('mk-MK') })}</Typography>
               </Stack>
             </Box>
             <FormTextField
               control={control}
               name="laborCost"
-              label="Labor cost"
+              label={t('laborCost')}
               type="number"
               InputProps={{ endAdornment: <InputAdornment position="end">den.</InputAdornment> }}
             />
-            <TextField label="Total" value={`${totalCost.toLocaleString('mk-MK')} den.`} InputProps={{ readOnly: true }} />
-            <FormTextField control={control} name="notes" label="Notes" multiline minRows={4} sx={{ gridColumn: { md: '1 / -1' } }} />
+            <TextField label={t('total')} value={`${totalCost.toLocaleString('mk-MK')} den.`} InputProps={{ readOnly: true }} />
+            <FormTextField control={control} name="notes" label={t('notes')} multiline minRows={4} sx={{ gridColumn: { md: '1 / -1' } }} />
           </Box>
           <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
             {t('save')}
@@ -275,25 +281,25 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
           </Box>
           <Stack direction="row" spacing={1}>
             <Button component={RouterLink} to={`/vehicles/${record.vehicleId}`} variant="outlined">
-              Vehicle
+              {t('vehicle')}
             </Button>
             <Button component={RouterLink} to={`/customers/${record.customerId}`} variant="outlined">
-              Customer
+              {t('customer')}
             </Button>
           </Stack>
         </Stack>
         <Paper sx={{ p: { xs: 3, md: 4 } }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-            <ServiceField label="Customer ID" value={record.customerId} />
-            <ServiceField label="Vehicle ID" value={record.vehicleId} />
-            <ServiceField label="Service date" value={record.performedAt} />
-            <ServiceField label="Service type" value={record.summary} />
-            <ServiceField label="Mileage" value={`${record.mileage.toLocaleString('mk-MK')} km`} />
-            <ServiceField label="Replaced parts" value={record.replacedParts || '-'} wide />
-            <ServiceField label="Parts cost" value={`${record.partsCost.toLocaleString('mk-MK')} den.`} />
-            <ServiceField label="Labor cost" value={`${record.laborCost.toLocaleString('mk-MK')} den.`} />
-            <ServiceField label="Total cost" value={`${record.cost.toLocaleString('mk-MK')} den.`} />
-            <ServiceField label="Notes" value={record.notes || '-'} wide />
+            <ServiceField label={t('customerId')} value={record.customerId} />
+            <ServiceField label={t('vehicleId')} value={record.vehicleId} />
+            <ServiceField label={t('serviceDate')} value={record.performedAt} />
+            <ServiceField label={t('serviceType')} value={record.summary} />
+            <ServiceField label={t('mileage')} value={`${record.mileage.toLocaleString('mk-MK')} km`} />
+            <ServiceField label={t('replacedParts')} value={record.replacedParts || '-'} wide />
+            <ServiceField label={t('partsCost')} value={`${record.partsCost.toLocaleString('mk-MK')} den.`} />
+            <ServiceField label={t('laborCost')} value={`${record.laborCost.toLocaleString('mk-MK')} den.`} />
+            <ServiceField label={t('total')} value={`${record.cost.toLocaleString('mk-MK')} den.`} />
+            <ServiceField label={t('notes')} value={record.notes || '-'} wide />
           </Box>
         </Paper>
       </Stack>
@@ -316,12 +322,12 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Vehicle</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Service</TableCell>
-                <TableCell align="right">Parts</TableCell>
-                <TableCell align="right">Labor</TableCell>
-                <TableCell align="right">Total</TableCell>
+                <TableCell>{t('vehicle')}</TableCell>
+                <TableCell>{t('date')}</TableCell>
+                <TableCell>{t('service')}</TableCell>
+                <TableCell align="right">{t('parts')}</TableCell>
+                <TableCell align="right">{t('labor')}</TableCell>
+                <TableCell align="right">{t('total')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

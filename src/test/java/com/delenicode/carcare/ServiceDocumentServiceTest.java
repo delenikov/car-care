@@ -2,6 +2,8 @@ package com.delenicode.carcare;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -11,13 +13,16 @@ import com.delenicode.carcare.document.DocumentType;
 import com.delenicode.carcare.document.ServiceDocument;
 import com.delenicode.carcare.document.ServiceDocumentRepository;
 import com.delenicode.carcare.document.ServiceDocumentService;
+import com.delenicode.carcare.notification.EmailDeliveryResult;
 import com.delenicode.carcare.notification.EmailService;
 import com.delenicode.carcare.notification.PdfService;
 import com.delenicode.carcare.servicerecord.ServiceRecord;
 import com.delenicode.carcare.servicerecord.ServiceRecordRepository;
 import com.delenicode.carcare.vehicle.Vehicle;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +51,23 @@ class ServiceDocumentServiceTest {
   }
 
   @Test
+  void findAllListsLatestDocumentsFirst() {
+    ServiceDocument latest = document();
+    latest.setId(41L);
+    latest.setCreatedAt(Instant.parse("2026-06-13T20:00:00Z"));
+    latest.setFileName("latest.pdf");
+    ServiceDocument older = document();
+    older.setId(40L);
+    older.setCreatedAt(Instant.parse("2026-06-12T20:00:00Z"));
+    older.setFileName("older.pdf");
+    when(documents.findAllByOrderByCreatedAtDescIdDesc()).thenReturn(List.of(latest, older));
+
+    var response = serviceDocumentService.findAll();
+
+    assertThat(response).extracting("fileName").containsExactly("latest.pdf", "older.pdf");
+  }
+
+  @Test
   void generateForServiceRecordCreatesPdfMetadata() {
     ServiceRecord record = serviceRecord();
     when(documents.save(any(ServiceDocument.class))).thenAnswer(invocation -> {
@@ -66,17 +88,19 @@ class ServiceDocumentServiceTest {
   void sendEmailsGeneratedDocumentToCustomer() {
     ServiceDocument document = document();
     when(documents.findById(40L)).thenReturn(Optional.of(document));
+    when(pdfService.renderServiceReport(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn("%PDF".getBytes());
+    when(emailService.sendHtmlWithAttachment(any(), any(), any(), any(), any(), any(), any())).thenReturn(new EmailDeliveryResult("ada@carcare.test", "Извештај за завршен сервис: Minor Service", true, "Email sent"));
 
     serviceDocumentService.send(40L);
 
-    verify(emailService).send("ada@carcare.test", "Service document: service-record-30.pdf", "Your service document is attached: service-record-30.pdf");
+    verify(emailService).sendHtmlWithAttachment(eq("ada@carcare.test"), eq("Извештај за завршен сервис: Minor Service"), contains("225.000 km"), contains("Километража: 225000 km"), eq("service-record-30.pdf"), eq("application/pdf"), any(byte[].class));
   }
 
   @Test
   void exportPdfRendersDocumentPdf() {
     ServiceDocument document = document();
     when(documents.findById(40L)).thenReturn(Optional.of(document));
-    when(pdfService.renderServiceSummary(any(), any())).thenReturn("%PDF".getBytes());
+    when(pdfService.renderServiceReport(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn("%PDF".getBytes());
 
     assertThat(serviceDocumentService.exportPdf(40L)).startsWith("%PDF".getBytes());
   }
@@ -103,6 +127,9 @@ class ServiceDocumentServiceTest {
     record.setPartsCost(new BigDecimal("1500.00"));
     record.setLaborCost(new BigDecimal("2000.00"));
     record.setTotalAmount(new BigDecimal("3500.00"));
+    record.setOdometer(225000);
+    record.setReplacedParts("Oil filter");
+    record.setNotes("Completed");
     return record;
   }
 
@@ -113,6 +140,7 @@ class ServiceDocumentServiceTest {
     customer.setLastName("Lovelace");
     customer.setFullName("Ada Lovelace");
     customer.setEmail("ada@carcare.test");
+    customer.setAddress("Analytical Lane");
     return customer;
   }
 

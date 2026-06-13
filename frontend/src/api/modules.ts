@@ -93,6 +93,7 @@ interface BackendOffer {
   vehicleId?: string;
   title: string;
   description?: string;
+  parts?: Array<{ name: string; price: number }>;
   partsCost?: number;
   laborCost?: number;
   amount: number;
@@ -107,6 +108,7 @@ interface BackendDocument {
   fileName: string;
   contentType: string;
   storageKey: string;
+  createdAt?: string;
 }
 
 const toCustomer = (customer: BackendCustomer): Customer => ({
@@ -210,6 +212,7 @@ const toOffer = (offer: BackendOffer): Offer => ({
   customerId: offer.customerId,
   vehicleId: offer.vehicleId,
   title: offer.title,
+  parts: offer.parts ?? [],
   total: offer.amount,
   partsCost: offer.partsCost ?? 0,
   laborCost: offer.laborCost ?? offer.amount,
@@ -220,6 +223,7 @@ const toOfferRequest = (offer: Omit<Offer, 'id'>) => ({
   customerId: offer.customerId,
   vehicleId: offer.vehicleId,
   title: offer.title,
+  parts: offer.parts ?? [],
   partsCost: offer.partsCost,
   laborCost: offer.laborCost,
   description: undefined
@@ -233,7 +237,7 @@ const toDocument = (document: BackendDocument): DocumentRecord => ({
   type: document.type,
   contentType: document.contentType,
   storageKey: document.storageKey,
-  uploadedAt: new Date().toISOString()
+  uploadedAt: document.createdAt ?? new Date().toISOString()
 });
 
 export const customersApi = {
@@ -279,13 +283,13 @@ export const offersApi = {
   get: (id: string) => unwrap(http.get<BackendOffer>(`/api/offers/${id}`)).then(toOffer),
   create: (payload: Omit<Offer, 'id'>) => unwrap(http.post<BackendOffer>('/api/offers', toOfferRequest(payload))).then(toOffer),
   update: (id: string, payload: Partial<Omit<Offer, 'id'>>) =>
-    unwrap(http.put<BackendOffer>(`/api/offers/${id}`, toOfferRequest({ customerId: '', title: '', total: 0, partsCost: 0, laborCost: 0, status: 'DRAFT', ...payload }))).then(toOffer),
+    unwrap(http.put<BackendOffer>(`/api/offers/${id}`, toOfferRequest({ customerId: '', title: '', total: 0, parts: [], partsCost: 0, laborCost: 0, status: 'DRAFT', ...payload }))).then(toOffer),
   remove: (id: string) => unwrap(http.delete<void>(`/api/offers/${id}`)),
   send: (id: string) => unwrap(http.post<BackendOffer>(`/api/offers/${id}/send`, {})).then(toOffer),
   exportPdf: (id: string) => http.get<Blob>(`/api/offers/${id}/pdf`, { responseType: 'blob' })
 };
 export const documentsApi = {
-  list: () => unwrap(http.get<BackendDocument[]>('/api/documents')).then((documents) => documents.map(toDocument)),
+  list: () => unwrap(http.get<BackendDocument[]>('/api/documents')).then((documents) => documents.map(toDocument).sort((left, right) => right.uploadedAt.localeCompare(left.uploadedAt))),
   get: (id: string) => unwrap(http.get<BackendDocument>(`/api/documents/${id}`)).then(toDocument),
   create: (payload: Omit<DocumentRecord, 'id'>) => unwrap(http.post<BackendDocument>('/api/documents', {
     customerId: payload.customerId,

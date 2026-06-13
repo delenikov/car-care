@@ -100,7 +100,7 @@ export function AppointmentsPage() {
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">
         <Box>
           <Typography variant="h2">{t('appointments')}</Typography>
-          <Typography color="text.secondary">Drag appointments to reschedule. Conflicting changes are rejected and restored.</Typography>
+          <Typography color="text.secondary">{t('appointmentInstructions')}</Typography>
         </Box>
       </Stack>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: '1.7fr 0.8fr' }, gap: 3 }}>
@@ -129,7 +129,7 @@ export function AppointmentsPage() {
             <Typography variant="h4">{t('bookAppointment')}</Typography>
             <DateInput
               name="slotDate"
-              label="Available date"
+              label={t('availableDate')}
               value={slotDate}
               error={false}
               onBlur={() => undefined}
@@ -148,15 +148,15 @@ export function AppointmentsPage() {
                 />
               ))}
             </Stack>
-            <FormTextField control={control} name="customerId" label="Customer ID" />
-            <FormTextField control={control} name="vehicleId" label="Vehicle ID" />
-            <FormTextField control={control} name="title" label="Service type" />
+            <FormTextField control={control} name="customerId" label={t('customerId')} />
+            <FormTextField control={control} name="vehicleId" label={t('vehicleId')} />
+            <FormTextField control={control} name="title" label={t('serviceType')} />
             <Controller
               control={control}
               name="startsAt"
               render={({ field, fieldState }) => (
                 <DateTimeInput
-                  label="Start"
+                  label={t('start')}
                   name={field.name}
                   value={field.value}
                   error={Boolean(fieldState.error)}
@@ -172,7 +172,7 @@ export function AppointmentsPage() {
               name="endsAt"
               render={({ field, fieldState }) => (
                 <DateTimeInput
-                  label="End"
+                  label={t('end')}
                   name={field.name}
                   value={field.value}
                   error={Boolean(fieldState.error)}

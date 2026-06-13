@@ -5,6 +5,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { useTranslation } from 'react-i18next';
 import { skopjeDate, skopjeTime } from '../utils/dateTime';
 
 dayjs.extend(customParseFormat);
@@ -124,12 +125,15 @@ export function DateTimeInput({
 }) {
   const currentDate = parseDate(datePart(value));
   const currentTime = parseTime(timePart(value));
+  const { t } = useTranslation();
+  const dateLabel = `${label} ${t('date').toLocaleLowerCase()}`;
+  const timeLabel = `${label} ${t('time').toLocaleLowerCase()}`;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 0.8fr' }, gap: 2 }}>
         <DatePicker
-          label={`${label} date`}
+          label={dateLabel}
           value={currentDate}
           format="DD.MM.YYYY"
           onChange={(nextValue) => {
@@ -148,7 +152,7 @@ export function DateTimeInput({
           }}
         />
         <TimePicker
-          label={`${label} time`}
+          label={timeLabel}
           value={currentTime}
           ampm={false}
           views={['hours', 'minutes']}

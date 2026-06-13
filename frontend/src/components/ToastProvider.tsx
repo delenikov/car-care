@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Box, IconButton, Snackbar } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 type ToastSeverity = 'success' | 'info' | 'warning' | 'error';
 
@@ -23,6 +24,7 @@ const toastColors: Record<ToastSeverity, string> = {
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [toast, setToast] = useState<ToastState | null>(null);
   const value = useMemo(
     () => ({
@@ -64,7 +66,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <Box component="span" sx={{ flex: 1 }}>
             {toast?.message}
           </Box>
-          <IconButton aria-label="Close notification" size="small" onClick={() => setToast(null)} sx={{ color: '#ffffff' }}>
+          <IconButton aria-label={t('closeNotification')} size="small" onClick={() => setToast(null)} sx={{ color: '#ffffff' }}>
             <CloseRoundedIcon fontSize="small" />
           </IconButton>
         </Box>

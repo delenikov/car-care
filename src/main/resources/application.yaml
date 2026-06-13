@@ -16,12 +16,26 @@ spring:
           time_zone: Europe/Skopje
   jackson:
     time-zone: Europe/Skopje
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          connectiontimeout: 2000
+          timeout: 2000
+          writetimeout: 2000
+          starttls:
+            enable: false
   flyway:
     enabled: true
   thymeleaf:
     check-template-location: false
 app:
   time-zone: Europe/Skopje
+  mail:
+    from: no-reply@carcare.local
   jwt:
     secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     access-minutes: 15

@@ -268,9 +268,9 @@ test('logs in and opens the dashboard summary', async ({ page }) => {
   await expect(page.getByTestId('app-toast')).toHaveCount(0);
   await expect(page.getByTestId('dashboard-hero-card')).toHaveCSS('background-image', 'none');
   await expect(page.getByTestId('dashboard-hero-card')).toHaveCSS('background-color', 'rgb(20, 35, 31)');
-  await expect(page.getByText('Track customers, vehicles, appointments, service records, and offers from one workspace.')).toBeVisible();
-  await expect(page.getByText('Customers', { exact: true })).toBeVisible();
-  await expect(page.getByText('Vehicles', { exact: true })).toBeVisible();
+  await expect(page.getByText('Следете клиенти, возила, термини, сервисни записи и понуди од едно работно место.')).toBeVisible();
+  await expect(page.getByRole('main').getByText('Клиенти', { exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('Возила', { exact: true })).toBeVisible();
 });
 
 test('shows specific login validation errors for missing email and wrong password', async ({ page }) => {
@@ -421,20 +421,20 @@ test('searches customers and shows customer vehicles and service history', async
   await page.goto('/customers');
   await page.locator('input[name="firstName"]').fill('Ada');
   await page.locator('input[name="lastName"]').fill('Lovelace');
-  await page.getByRole('button', { name: 'Search' }).click();
+  await page.getByRole('button', { name: 'Пребарај' }).click();
 
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
   expect(searchUrl).toContain('firstName=Ada');
   expect(searchUrl).toContain('lastName=Lovelace');
 
-  await page.getByRole('link', { name: 'Details' }).click();
-  await expect(page.getByText('Customer vehicles')).toBeVisible();
+  await page.getByRole('link', { name: 'Детали' }).click();
+  await expect(page.getByText('Возила на клиентот')).toBeVisible();
   await expect(page.getByText('SK-1234-AA')).toBeVisible();
   await expect(page.locator('a[href="/services/new?customerId=101&vehicleId=201"]')).toBeVisible();
-  await expect(page.getByText('Service history')).toBeVisible();
+  await expect(page.getByText('Сервисна историја')).toBeVisible();
   await expect(page.getByText('Oil and filters')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('button', { name: 'Избриши' }).click();
   await expect(page).toHaveURL(/\/customers$/);
   expect(deletedCustomerId).toBe('101');
 });
@@ -485,7 +485,7 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
 
   await page.goto('/vehicles');
   await page.locator('input[name="vehicleSearch"]').fill('SK-1234-AA');
-  await page.getByRole('button', { name: 'Search' }).click();
+  await page.getByRole('button', { name: 'Пребарај' }).click();
 
   await expect(page.getByText('Volkswagen Golf').first()).toBeVisible();
   await expect(page.getByText('5B4LP57F1X3453221').first()).toBeVisible();
@@ -497,9 +497,9 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
   expect(searchUrl).not.toContain('vin=');
   expect(searchUrl).not.toContain('plateNumber=');
   expect(searchUrl).not.toContain('owner=');
-  await page.getByLabel('Clear vehicle query').click();
+  await page.getByLabel('Исчисти пребарување возила').click();
   await expect(page.locator('input[name="vehicleSearch"]')).toHaveValue('');
-  await page.getByRole('button', { name: 'Reset' }).click();
+  await page.getByRole('button', { name: 'Ресетирај' }).click();
   await expect(page.locator('input[name="vehicleSearch"]')).toHaveValue('');
 
   await page.route('**/api/customers', async (route) => {
@@ -510,9 +510,9 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
   });
 
   await page.goto('/vehicles/new');
-  await page.getByLabel('Customer').fill('Ada');
+  await page.getByLabel('Клиент').fill('Ada');
   await page.getByRole('option', { name: /Ada Lovelace/ }).click();
-  await expect(page.getByLabel('Customer')).toHaveValue('Ada Lovelace');
+  await expect(page.getByLabel('Клиент')).toHaveValue('Ada Lovelace');
   await page.locator('input[name="plate"]').fill('OH-2020-AA');
   await page.locator('input[name="make"]').fill('Toyota');
   await page.locator('input[name="model"]').fill('Corolla');
@@ -555,7 +555,7 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
 
   await page.locator('a[href="/services/new?customerId=101&vehicleId=202"]').click();
   await expect(page).toHaveURL(/\/services\/new\?customerId=101&vehicleId=202$/);
-  await expect(page.getByLabel('Customer')).toHaveValue('Ada Lovelace - +38970111111');
+  await expect(page.getByLabel('Клиент')).toHaveValue('Ada Lovelace');
 });
 
 test('records services with parts labor and replaced parts', async ({ page }) => {
@@ -586,20 +586,23 @@ test('records services with parts labor and replaced parts', async ({ page }) =>
   });
 
   await page.goto('/services/new');
-  await page.getByLabel('Customer').fill('Ada');
-  await page.getByRole('option', { name: /Ada Lovelace/ }).click();
-  await page.getByLabel('Vehicle').fill('SK-1234-AA');
+  await page.getByLabel('Клиент').fill('Ada');
+  await page.getByRole('option', { name: 'Ada Lovelace', exact: true }).click();
+  await expect(page.getByLabel('Клиент')).toHaveValue('Ada Lovelace');
+  await expect(page.getByText(/Too small/i)).toHaveCount(0);
+  await page.getByLabel('Возило').fill('SK-1234-AA');
   await page.getByRole('option', { name: /SK-1234-AA - Volkswagen Golf/ }).click();
-  await fillDatePickerGroup(page, 'Date', '12.06.2026');
-  await fillTimePickerGroup(page, 'Time', '14:35');
+  await expect(page.getByText(/Too small/i)).toHaveCount(0);
+  await fillDatePickerGroup(page, 'Датум', '12.06.2026');
+  await fillTimePickerGroup(page, 'Време', '14:35');
   await page.locator('input[name="mileage"]').fill('123456');
   await page.locator('input[name="summary"]').fill('Part Replacement Service');
-  await page.getByRole('button', { name: 'Add part' }).click();
+  await page.getByRole('button', { name: 'Додај дел' }).click();
   await page.locator('input[name="parts.0.name"]').fill('Oil filter');
   await page.locator('input[name="parts.0.price"]').fill('1500');
   await page.locator('input[name="laborCost"]').fill('2000');
   await page.locator('textarea[name="notes"]').fill('Oil and filters');
-  await expect(page.getByText(/Parts total: 1[,.]500 den\./)).toBeVisible();
+  await expect(page.getByText(/Вкупно делови: 1[,.]500 ден\./)).toBeVisible();
   await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/services$/);
@@ -631,7 +634,7 @@ test('opens service details from services and vehicle history', async ({ page })
   await page.getByRole('row', { name: /Oil and filters/ }).click();
   await expect(page).toHaveURL(/\/services\/401$/);
   await expect(page.getByRole('heading', { name: 'Oil and filters' })).toBeVisible();
-  await expect(page.getByText('Replaced parts')).toBeVisible();
+  await expect(page.getByText('Заменети делови')).toBeVisible();
   await expect(page.getByText('Oil filter')).toBeVisible();
   await expect(page.getByText('3,500 den.').first()).toBeVisible();
 
@@ -672,12 +675,12 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   });
 
   await page.goto('/appointments');
-  await expect(page.getByRole('group', { name: 'Available date' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Start date' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Start time' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'End date' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'End time' })).toBeVisible();
-  await fillDatePickerGroup(page, 'Available date', '20.06.2026');
+  await expect(page.getByRole('group', { name: 'Достапен датум' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Почеток датум' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Почеток време' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Крај датум' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Крај време' })).toBeVisible();
+  await fillDatePickerGroup(page, 'Достапен датум', '20.06.2026');
   const availableSlot = page.locator('.MuiChip-root').filter({ hasText: '09:00' });
   await expect(availableSlot).toBeVisible();
   expect(availableUrl).toContain('date=2026-06-20');
@@ -705,22 +708,32 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
   await signIn(page);
   let offerPayload: Record<string, unknown> | undefined;
   let offerStatus = 'DRAFT';
+  let offerParts: Array<{ name: string; price: number }> = [];
   let sendCalled = false;
   let quotePdfCalled = false;
+
+  await page.route('**/api/customers/*/vehicles', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok([{ id: '201', customerId: '101', customerName: 'Ada Lovelace', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123', fuelType: 'Diesel', engine: '2.0 TDI' }]))
+    });
+  });
 
   await page.route('**/api/offers', async (route) => {
     const request = route.request();
     if (request.method() === 'POST') {
       offerPayload = request.postDataJSON();
+      offerStatus = 'SENT';
+      offerParts = offerPayload.parts as Array<{ name: string; price: number }>;
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '502', ...offerPayload, amount: 1200, status: 'DRAFT' }))
+        body: JSON.stringify(ok({ id: '502', ...offerPayload, amount: 1200, status: offerStatus }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '501', customerId: '101', vehicleId: '201', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'DRAFT' }]))
+      body: JSON.stringify(ok([{ id: '501', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: [{ name: 'Brake pads', price: 700 }], partsCost: 700, laborCost: 500, amount: 1200, status: 'DRAFT' }]))
     });
   });
 
@@ -736,22 +749,30 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
       sendCalled = true;
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: offerStatus }))
+        body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, amount: 1200, status: offerStatus }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: offerStatus }))
+      body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, amount: 1200, status: offerStatus }))
     });
   });
 
   await page.goto('/offers/new');
-  await page.locator('input[name="customerId"]').fill('101');
-  await page.locator('input[name="vehicleId"]').fill('201');
+  await page.getByLabel('Клиент').fill('Ada');
+  await page.getByRole('option', { name: 'Ada Lovelace', exact: true }).click();
+  const vehiclePicker = page.getByRole('combobox', { name: 'Возило' });
+  await expect(vehiclePicker).toBeEnabled();
+  await vehiclePicker.click();
+  await vehiclePicker.fill('SK-1234-AA');
+  await page.getByRole('option', { name: /SK-1234-AA - Volkswagen Golf/ }).click();
   await page.locator('input[name="title"]').fill('Brake inspection');
-  await page.locator('input[name="partsCost"]').fill('700');
+  await page.getByRole('button', { name: 'Додај дел' }).click();
+  await page.locator('input[name="parts.0.name"]').fill('Brake pads');
+  await page.locator('input[name="parts.0.price"]').fill('700');
   await page.locator('input[name="laborCost"]').fill('500');
+  await expect(page.getByText(/Вкупно делови: 700 ден\./)).toBeVisible();
   await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/offers\/502$/);
@@ -759,16 +780,21 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
     customerId: '101',
     vehicleId: '201',
     title: 'Brake inspection',
+    parts: [{ name: 'Brake pads', price: 700 }],
     partsCost: 700,
     laborCost: 500
   });
 
   await page.goto('/offers/502');
-  await expect(page.getByText('Parts cost')).toBeVisible();
+  await expect(page.getByText('Цена на делови')).toBeVisible();
+  await expect(page.getByText('Brake pads')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Испрати' })).toBeDisabled();
+  const offerDownloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PDF' }).click();
+  const offerDownload = await offerDownloadPromise;
+  expect(offerDownload.suggestedFilename()).toBe('offer-502.pdf');
   await expect.poll(() => quotePdfCalled).toBeTruthy();
-  await page.getByRole('button', { name: 'Испрати' }).click();
-  await expect.poll(() => sendCalled).toBeTruthy();
+  expect(sendCalled).toBe(false);
 });
 
 test('sends generated service documents and exports PDFs', async ({ page }) => {
@@ -801,7 +827,14 @@ test('sends generated service documents and exports PDFs', async ({ page }) => {
 
   await page.goto('/documents');
   await expect(page.getByText('Inspection report.pdf')).toBeVisible();
+  await page.getByRole('button', { name: 'Преглед' }).click();
+  await expect(page.locator('iframe[title="Inspection report.pdf"]')).toBeVisible();
+  await expect.poll(() => documentPdfCalled).toBeTruthy();
+  documentPdfCalled = false;
+  const documentDownloadPromise = page.waitForEvent('download');
   await page.locator('tbody button').nth(1).click();
+  const documentDownload = await documentDownloadPromise;
+  expect(documentDownload.suggestedFilename()).toBe('Inspection report.pdf');
   await expect.poll(() => documentPdfCalled).toBeTruthy();
   await page.locator('tbody button').nth(2).click();
   await expect.poll(() => documentSendCalled).toBeTruthy();
@@ -848,7 +881,7 @@ test('creates updates and disables employee accounts from admin', async ({ page 
 
   await page.goto('/admin');
   await expect(page.locator('input[name="fullName"]')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Create employee' }).click();
+  await page.getByRole('button', { name: 'Нов вработен' }).click();
   await page.locator('input[name="fullName"]').fill('New Technician');
   await page.locator('input[name="email"]').fill('new-tech@carcare.test');
   await page.locator('input[name="password"]').fill('password123');
@@ -880,8 +913,8 @@ test('creates updates and disables employee accounts from admin', async ({ page 
   });
 
   await page.getByLabel('delete new-tech@carcare.test').click();
-  await expect(page.getByRole('dialog', { name: 'Delete employee' })).toBeVisible();
-  await page.getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByRole('dialog', { name: 'Избриши вработен' })).toBeVisible();
+  await page.getByRole('button', { name: 'Избриши' }).click();
   await expect(page.getByText('DISABLED').first()).toBeVisible();
   expect(deletedUserId).toBe('3');
 });

@@ -22,10 +22,10 @@ export function DashboardPage() {
   }
 
   const stats = [
-    { label: 'Customers', value: summary.customers },
-    { label: 'Vehicles', value: summary.vehicles },
-    { label: 'Appointments', value: summary.appointments },
-    { label: 'Service records', value: summary.serviceRecords }
+    { label: t('customers'), value: summary.customers },
+    { label: t('vehicles'), value: summary.vehicles },
+    { label: t('appointments'), value: summary.appointments },
+    { label: t('serviceRecords'), value: summary.serviceRecords }
   ];
 
   return (
@@ -39,23 +39,23 @@ export function DashboardPage() {
               {t('dashboard')}
             </Typography>
             <Typography sx={{ mt: 2, maxWidth: 580, opacity: 0.78 }}>
-              Track customers, vehicles, appointments, service records, and offers from one workspace.
+              {t('dashboardSubtitle')}
             </Typography>
           </CardContent>
         </Card>
         <Card>
           <CardContent sx={{ p: { xs: 3, md: 4 } }}>
             <Typography variant="h4" gutterBottom>
-              Overview
+              {t('overview')}
             </Typography>
             <Stack spacing={2}>
               <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 3 }}>
                 <Typography fontWeight={700}>{summary.offers}</Typography>
-                <Typography color="text.secondary">Offers</Typography>
+                <Typography color="text.secondary">{t('offers')}</Typography>
               </Box>
               <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 3 }}>
                 <Typography fontWeight={700}>{summary.serviceRecords}</Typography>
-                <Typography color="text.secondary">Service records</Typography>
+                <Typography color="text.secondary">{t('serviceRecords')}</Typography>
               </Box>
             </Stack>
           </CardContent>

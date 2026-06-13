@@ -50,7 +50,7 @@ The remaining gaps are outside FR-1 through FR-42 or are non-functional/architec
 
 ### Quotations And Documents
 
-- Email delivery still uses the local stub transport until SMTP is configured.
+- Email delivery is configured through Spring Mail and defaults to local Mailpit SMTP on port 1025.
 - Generated document files are rendered on demand; binary object storage is not implemented.
 
 ### Loyalty And Discount

@@ -75,11 +75,17 @@ export interface ServiceRecord {
   notes?: string;
 }
 
+export interface OfferPart {
+  name: string;
+  price: number;
+}
+
 export interface Offer {
   id: string;
   customerId: string;
   vehicleId?: string;
   title: string;
+  parts: OfferPart[];
   total: number;
   partsCost: number;
   laborCost: number;

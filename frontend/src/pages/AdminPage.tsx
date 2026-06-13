@@ -112,7 +112,7 @@ function EmployeePanel() {
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end">
         <Button variant="contained" onClick={startCreate}>
-          Create employee
+          {t('newEmployee')}
         </Button>
       </Stack>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: formOpen ? '1.2fr 0.8fr' : '1fr' }, gap: 3 }}>
@@ -121,11 +121,11 @@ function EmployeePanel() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>{t('name')}</TableCell>
+                <TableCell>{t('email')}</TableCell>
+                <TableCell>{t('role')}</TableCell>
+                <TableCell>{t('status')}</TableCell>
+                <TableCell align="right">{t('actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -152,17 +152,17 @@ function EmployeePanel() {
         {formOpen ? (
           <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 }, alignSelf: 'start' }}>
             <Stack spacing={2.5}>
-              <Typography variant="h4">{editingId ? 'Edit employee' : 'New employee'}</Typography>
-              <FormTextField control={control} name="fullName" label="Name" />
-              <FormTextField control={control} name="email" label="Email" />
-              <FormTextField control={control} name="password" label="Password" type="password" helperText={editingId ? 'Fill only to set a new password' : undefined} />
-              <FormTextField control={control} name="enabled" label="Active" select SelectProps={{ native: true }}>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
+              <Typography variant="h4">{editingId ? t('editEmployee') : t('newEmployee')}</Typography>
+              <FormTextField control={control} name="fullName" label={t('name')} />
+              <FormTextField control={control} name="email" label={t('email')} />
+              <FormTextField control={control} name="password" label={t('password')} type="password" helperText={editingId ? t('newPasswordHint') : undefined} />
+              <FormTextField control={control} name="enabled" label={t('active')} select SelectProps={{ native: true }}>
+                <option value="true">{t('active')}</option>
+                <option value="false">{t('inactive')}</option>
               </FormTextField>
-              <FormTextField control={control} name="role" label="Role" select SelectProps={{ native: true }}>
-                <option value="EMPLOYEE">Employee</option>
-                <option value="ADMIN">Admin</option>
+              <FormTextField control={control} name="role" label={t('role')} select SelectProps={{ native: true }}>
+                <option value="EMPLOYEE">{t('employee')}</option>
+                <option value="ADMIN">{t('admin')}</option>
               </FormTextField>
               <Button type="submit" variant="contained" disabled={formState.isSubmitting}>{t('save')}</Button>
               <Button type="button" variant="outlined" onClick={() => { setEditingId(null); setFormOpen(false); reset(emptyEmployeeForm()); }}>
@@ -174,9 +174,9 @@ function EmployeePanel() {
       </Box>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Delete employee"
-        description={`Are you sure you want to delete ${deleteTarget?.fullName ?? 'this user'}?`}
-        confirmLabel="Delete"
+        title={t('deleteEmployee')}
+        description={t('deleteEmployeeConfirm', { name: deleteTarget?.fullName ?? t('employee') })}
+        confirmLabel={t('delete')}
         cancelLabel={t('cancel')}
         confirming={deleteMutation.isPending}
         onCancel={() => setDeleteTarget(null)}
@@ -211,17 +211,17 @@ function LoyaltyPanel() {
       <Paper sx={{ overflow: 'auto' }}>
         {(rulesQuery.data ?? []).length ? (
           <Table>
-            <TableHead><TableRow><TableCell>Rule</TableCell><TableCell>Points/denar</TableCell><TableCell>Status</TableCell></TableRow></TableHead>
+            <TableHead><TableRow><TableCell>{t('rule')}</TableCell><TableCell>{t('pointsPerDenar')}</TableCell><TableCell>{t('status')}</TableCell></TableRow></TableHead>
             <TableBody>{(rulesQuery.data ?? []).map((rule) => <TableRow key={rule.id}><TableCell>{rule.name}</TableCell><TableCell>{rule.pointsPerDenar}</TableCell><TableCell><Chip label={rule.active ? 'ACTIVE' : 'INACTIVE'} color={rule.active ? 'success' : 'default'} size="small" /></TableCell></TableRow>)}</TableBody>
           </Table>
         ) : <EmptyState />}
       </Paper>
       <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 }, alignSelf: 'start' }}>
         <Stack spacing={2.5}>
-          <Typography variant="h4">Loyalty rule</Typography>
-          <FormTextField control={control} name="name" label="Name" />
-          <FormTextField control={control} name="pointsPerDenar" label="Points per denar" type="number" />
-          <FormTextField control={control} name="active" label="Active" helperText="true or false" />
+          <Typography variant="h4">{t('loyaltyRule')}</Typography>
+          <FormTextField control={control} name="name" label={t('name')} />
+          <FormTextField control={control} name="pointsPerDenar" label={t('pointsPerDenar')} type="number" />
+          <FormTextField control={control} name="active" label={t('active')} helperText={`${t('true')} / ${t('false')}`} />
           <Button type="submit" variant="contained" disabled={formState.isSubmitting}>{t('save')}</Button>
         </Stack>
       </Paper>

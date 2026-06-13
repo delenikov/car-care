@@ -1,20 +1,29 @@
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Chip, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { Autocomplete, Box, Button, Chip, CircularProgress, Divider, IconButton, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
-import { offersApi } from '../api/modules';
+import { customersApi, offersApi } from '../api/modules';
 import { FormTextField } from '../components/FormTextField';
 import { EmptyState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
+import type { Customer, OfferPart, Vehicle } from '../types';
+import { downloadBlob } from '../utils/download';
+
+const partSchema = z.object({
+  name: z.string().min(1),
+  price: z.coerce.number().min(0)
+});
 
 const schema = z.object({
   customerId: z.string().min(1),
   vehicleId: z.string().optional(),
   title: z.string().min(1),
-  partsCost: z.coerce.number().min(0),
+  parts: z.array(partSchema),
   laborCost: z.coerce.number().min(0),
   status: z.literal('DRAFT')
 });
@@ -32,16 +41,40 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
   const createMutation = useMutation({ mutationFn: offersApi.create });
   const sendMutation = useMutation({ mutationFn: offersApi.send });
   const exportMutation = useMutation({ mutationFn: offersApi.exportPdf });
-  const { control, handleSubmit, formState } = useForm<OfferForm>({
+  const { clearErrors, control, handleSubmit, setValue, formState } = useForm<OfferForm>({
     resolver: zodResolver(schema) as never,
-    defaultValues: { customerId: '', vehicleId: '', title: '', partsCost: 0, laborCost: 0, status: 'DRAFT' }
+    defaultValues: { customerId: '', vehicleId: '', title: '', parts: [], laborCost: 0, status: 'DRAFT' }
   });
+  const { fields: partFields, append: appendPart, remove: removePart } = useFieldArray({ control, name: 'parts' });
+  const selectedCustomerId = useWatch({ control, name: 'customerId' });
+  const watchedParts = useWatch({ control, name: 'parts' }) ?? [];
+  const watchedLaborCost = useWatch({ control, name: 'laborCost' });
+  const customersQuery = useQuery({ queryKey: ['customers', 'offer-form'], queryFn: () => customersApi.list(), enabled: mode === 'create' });
+  const vehiclesQuery = useQuery({
+    queryKey: ['customers', selectedCustomerId, 'vehicles', 'offer-form'],
+    queryFn: () => customersApi.vehicles(selectedCustomerId),
+    enabled: mode === 'create' && Boolean(selectedCustomerId)
+  });
+  const partsCost = sumParts(watchedParts);
+  const laborCost = Number(watchedLaborCost) || 0;
+  const totalCost = partsCost + laborCost;
 
   if (mode === 'create') {
     const onSubmit = handleSubmit(async (values) => {
-      const created = await createMutation.mutateAsync({ ...values, total: values.partsCost + values.laborCost });
+      const parts = values.parts.map((part) => ({ name: part.name.trim(), price: Number(part.price) }));
+      const computedPartsCost = sumParts(parts);
+      const created = await createMutation.mutateAsync({
+        customerId: values.customerId,
+        vehicleId: values.vehicleId || undefined,
+        title: values.title,
+        parts,
+        partsCost: computedPartsCost,
+        laborCost: Number(values.laborCost) || 0,
+        total: computedPartsCost + (Number(values.laborCost) || 0),
+        status: 'DRAFT'
+      });
       await queryClient.invalidateQueries({ queryKey: ['offers'] });
-      showToast(t('saved'));
+      showToast(t('offerSent'));
       navigate(`/offers/${created.id}`);
     });
 
@@ -50,14 +83,119 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         <Typography variant="h2">{t('createOffer')}</Typography>
         <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
-            <FormTextField control={control} name="customerId" label="Customer ID" />
-            <FormTextField control={control} name="vehicleId" label="Vehicle ID" />
-            <FormTextField control={control} name="title" label="Title" />
-            <FormTextField control={control} name="partsCost" label="Parts cost" type="number" />
-            <FormTextField control={control} name="laborCost" label="Labor cost" type="number" />
+            <Controller
+              control={control}
+              name="customerId"
+              render={({ field, fieldState }) => {
+                const customers = customersQuery.data ?? [];
+                const selectedCustomer = customers.find((customer) => String(customer.id) === field.value) ?? null;
+                return (
+                  <Autocomplete
+                    options={customers}
+                    value={selectedCustomer}
+                    loading={customersQuery.isLoading}
+                    getOptionLabel={customerLabel}
+                    isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                    onChange={(_, value) => {
+                      field.onChange(value ? String(value.id) : '');
+                      setValue('vehicleId', '');
+                      clearErrors('customerId');
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label={t('customer')}
+                        inputRef={field.ref}
+                        error={Boolean(fieldState.error)}
+                        helperText={fieldState.error?.message}
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {customersQuery.isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          )
+                        }}
+                      />
+                    )}
+                  />
+                );
+              }}
+            />
+            <Controller
+              control={control}
+              name="vehicleId"
+              render={({ field, fieldState }) => {
+                const vehicles = vehiclesQuery.data ?? [];
+                const selectedVehicle = vehicles.find((vehicle) => String(vehicle.id) === field.value) ?? null;
+                return (
+                  <Autocomplete
+                    options={vehicles}
+                    value={selectedVehicle}
+                    loading={vehiclesQuery.isLoading}
+                    disabled={!selectedCustomerId}
+                    getOptionLabel={vehicleLabel}
+                    isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                    onChange={(_, value) => {
+                      field.onChange(value ? String(value.id) : '');
+                      clearErrors('vehicleId');
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label={t('vehicle')}
+                        inputRef={field.ref}
+                        error={Boolean(fieldState.error)}
+                        helperText={fieldState.error?.message ?? (!selectedCustomerId ? t('selectCustomerFirst') : undefined)}
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {vehiclesQuery.isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          )
+                        }}
+                      />
+                    )}
+                  />
+                );
+              }}
+            />
+            <FormTextField control={control} name="title" label={t('title')} sx={{ gridColumn: { md: '1 / -1' } }} />
+            <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+              <Stack spacing={2}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }}>
+                  <Typography variant="h4">{t('parts')}</Typography>
+                  <Button type="button" variant="outlined" startIcon={<AddRoundedIcon />} onClick={() => appendPart({ name: '', price: 0 })}>
+                    {t('addPart')}
+                  </Button>
+                </Stack>
+                {partFields.length ? (
+                  <Stack spacing={1.5}>
+                    {partFields.map((part, index) => (
+                      <Box key={part.id} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 180px auto' }, gap: 1.5, alignItems: 'start' }}>
+                        <FormTextField control={control} name={`parts.${index}.name`} label={t('partName')} />
+                        <FormTextField control={control} name={`parts.${index}.price`} label={t('price')} type="number" />
+                        <IconButton aria-label={`${t('delete')} ${index + 1}`} onClick={() => removePart(index)} sx={{ mt: { sm: 1 } }}>
+                          <DeleteRoundedIcon />
+                        </IconButton>
+                      </Box>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography color="text.secondary">{t('noOfferParts')}</Typography>
+                )}
+                <Divider />
+                <Typography fontWeight={700}>{t('partsTotal', { amount: partsCost.toLocaleString('mk-MK') })}</Typography>
+              </Stack>
+            </Box>
+            <FormTextField control={control} name="laborCost" label={t('laborCost')} type="number" />
+            <TextField label={t('total')} value={`${totalCost.toLocaleString('mk-MK')} den.`} InputProps={{ readOnly: true }} />
           </Box>
-          <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
-            {t('save')}
+          <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting || createMutation.isPending}>
+            {t('saveAndSend')}
           </Button>
         </Paper>
       </Stack>
@@ -80,7 +218,8 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
               variant="outlined"
               disabled={exportMutation.isPending}
               onClick={async () => {
-                await exportMutation.mutateAsync(offer.id);
+                const response = await exportMutation.mutateAsync(offer.id);
+                downloadBlob(response.data, `offer-${offer.id}.pdf`);
                 showToast('PDF');
               }}
             >
@@ -92,7 +231,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
               onClick={async () => {
                 await sendMutation.mutateAsync(offer.id);
                 await queryClient.invalidateQueries({ queryKey: ['offers', id] });
-                showToast(t('send'));
+                showToast(t('offerSent'));
               }}
             >
               {t('send')}
@@ -101,13 +240,38 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         </Stack>
         <Paper sx={{ p: { xs: 3, md: 4 } }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-            <OfferField label="Customer" value={offer.customerId} />
-            <OfferField label="Vehicle" value={offer.vehicleId ?? '-'} />
-            <OfferField label="Parts cost" value={`${offer.partsCost.toLocaleString('mk-MK')} den.`} />
-            <OfferField label="Labor cost" value={`${offer.laborCost.toLocaleString('mk-MK')} den.`} />
-            <OfferField label="Status" value={offer.status} />
-            <OfferField label="Total" value={`${offer.total.toLocaleString('mk-MK')} den.`} />
+            <OfferField label={t('customer')} value={offer.customerId} />
+            <OfferField label={t('vehicle')} value={offer.vehicleId ?? '-'} />
+            <OfferField label={t('partsCost')} value={`${offer.partsCost.toLocaleString('mk-MK')} den.`} />
+            <OfferField label={t('laborCost')} value={`${offer.laborCost.toLocaleString('mk-MK')} den.`} />
+            <OfferField label={t('status')} value={offer.status} />
+            <OfferField label={t('total')} value={`${offer.total.toLocaleString('mk-MK')} den.`} />
           </Box>
+        </Paper>
+        <Paper sx={{ p: { xs: 3, md: 4 } }}>
+          <Typography variant="h3" sx={{ mb: 2 }}>
+            {t('parts')}
+          </Typography>
+          {offer.parts.length ? (
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('partName')}</TableCell>
+                  <TableCell align="right">{t('price')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {offer.parts.map((part) => (
+                  <TableRow key={`${part.name}-${part.price}`}>
+                    <TableCell>{part.name}</TableCell>
+                    <TableCell align="right">{part.price.toLocaleString('mk-MK')} den.</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <Typography color="text.secondary">{t('noOfferParts')}</Typography>
+          )}
         </Paper>
       </Stack>
     );
@@ -129,12 +293,12 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Offer</TableCell>
-                <TableCell>Customer</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Parts</TableCell>
-                <TableCell align="right">Labor</TableCell>
-                <TableCell align="right">Total</TableCell>
+                <TableCell>{t('offer')}</TableCell>
+                <TableCell>{t('customer')}</TableCell>
+                <TableCell>{t('status')}</TableCell>
+                <TableCell align="right">{t('parts')}</TableCell>
+                <TableCell align="right">{t('labor')}</TableCell>
+                <TableCell align="right">{t('total')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -169,4 +333,16 @@ function OfferField({ label, value }: { label: string; value: string }) {
       <Typography fontWeight={700}>{value}</Typography>
     </Box>
   );
+}
+
+function sumParts(parts: OfferPart[]) {
+  return parts.reduce((total, part) => total + (Number(part.price) || 0), 0);
+}
+
+function customerLabel(customer: Customer) {
+  return customer.name;
+}
+
+function vehicleLabel(vehicle: Vehicle) {
+  return `${vehicle.plate} - ${vehicle.make} ${vehicle.model}`;
 }
