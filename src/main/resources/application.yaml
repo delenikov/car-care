@@ -9,11 +9,18 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Europe/Skopje
+  jackson:
+    time-zone: Europe/Skopje
   flyway:
     enabled: true
   thymeleaf:
     check-template-location: false
 app:
+  time-zone: Europe/Skopje
   jwt:
     secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     access-minutes: 15

@@ -1,5 +1,6 @@
 import { http, refreshTokenStorage, tokenStorage, unwrap } from './http';
 import type { Appointment, AppointmentSlot, AuthResponse, Customer, DashboardSummary, DocumentRecord, LoyaltyRule, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
+import { skopjeOffsetDateTime } from '../utils/dateTime';
 
 export interface LoginPayload {
   email: string;
@@ -98,6 +99,16 @@ interface BackendOffer {
   status: Offer['status'];
 }
 
+interface BackendDocument {
+  id: string;
+  customerId?: string;
+  serviceRecordId?: string;
+  type: string;
+  fileName: string;
+  contentType: string;
+  storageKey: string;
+}
+
 const toCustomer = (customer: BackendCustomer): Customer => ({
   id: customer.id,
   name: customer.fullName,
@@ -173,8 +184,8 @@ const toAppointment = (appointment: BackendAppointment): Appointment => ({
 const toAppointmentRequest = (appointment: Omit<Appointment, 'id'>) => ({
   customerId: appointment.customerId,
   vehicleId: appointment.vehicleId,
-  startsAt: appointment.startsAt,
-  endsAt: appointment.endsAt,
+  startsAt: skopjeOffsetDateTime(appointment.startsAt),
+  endsAt: skopjeOffsetDateTime(appointment.endsAt),
   title: appointment.title,
   notes: undefined
 });
@@ -197,6 +208,17 @@ const toOfferRequest = (offer: Omit<Offer, 'id'>) => ({
   partsCost: offer.partsCost,
   laborCost: offer.laborCost,
   description: undefined
+});
+
+const toDocument = (document: BackendDocument): DocumentRecord => ({
+  id: document.id,
+  customerId: document.customerId,
+  serviceRecordId: document.serviceRecordId,
+  title: document.fileName,
+  type: document.type,
+  contentType: document.contentType,
+  storageKey: document.storageKey,
+  uploadedAt: new Date().toISOString()
 });
 
 export const customersApi = {
@@ -244,9 +266,25 @@ export const offersApi = {
   update: (id: string, payload: Partial<Omit<Offer, 'id'>>) =>
     unwrap(http.put<BackendOffer>(`/api/offers/${id}`, toOfferRequest({ customerId: '', title: '', total: 0, partsCost: 0, laborCost: 0, status: 'DRAFT', ...payload }))).then(toOffer),
   remove: (id: string) => unwrap(http.delete<void>(`/api/offers/${id}`)),
-  send: (id: string) => unwrap(http.post<BackendOffer>(`/api/offers/${id}/send`, {})).then(toOffer)
+  send: (id: string) => unwrap(http.post<BackendOffer>(`/api/offers/${id}/send`, {})).then(toOffer),
+  exportPdf: (id: string) => http.get<Blob>(`/api/offers/${id}/pdf`, { responseType: 'blob' })
 };
-export const documentsApi = crud<DocumentRecord>('/api/documents');
+export const documentsApi = {
+  list: () => unwrap(http.get<BackendDocument[]>('/api/documents')).then((documents) => documents.map(toDocument)),
+  get: (id: string) => unwrap(http.get<BackendDocument>(`/api/documents/${id}`)).then(toDocument),
+  create: (payload: Omit<DocumentRecord, 'id'>) => unwrap(http.post<BackendDocument>('/api/documents', {
+    customerId: payload.customerId,
+    serviceRecordId: payload.serviceRecordId,
+    type: payload.type,
+    fileName: payload.title,
+    contentType: payload.contentType ?? 'application/pdf',
+    storageKey: payload.storageKey ?? `documents/${payload.title}`
+  })).then(toDocument),
+  update: (id: string, payload: Partial<Omit<DocumentRecord, 'id'>>) => unwrap(http.put<BackendDocument>(`/api/documents/${id}`, payload)).then(toDocument),
+  remove: (id: string) => unwrap(http.delete<void>(`/api/documents/${id}`)),
+  send: (id: string) => unwrap(http.post<BackendDocument>(`/api/documents/${id}/send`, {})).then(toDocument),
+  exportPdf: (id: string) => http.get<Blob>(`/api/documents/${id}/pdf`, { responseType: 'blob' })
+};
 
 export interface EmployeePayload {
   fullName: string;

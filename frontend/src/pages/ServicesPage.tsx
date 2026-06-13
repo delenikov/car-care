@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { Box, Button, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -9,11 +9,13 @@ import { serviceRecordsApi } from '../api/modules';
 import { FormTextField } from '../components/FormTextField';
 import { EmptyState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
+import { parseSkopjeDisplayDate, skopjeDate, skopjeDisplayDate, skopjeTime } from '../utils/dateTime';
 
 const schema = z.object({
   customerId: z.string().min(1),
   vehicleId: z.string().min(1),
-  performedAt: z.string().min(1),
+  performedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  serviceTime: z.string().regex(/^\d{2}:\d{2}:\d{2}$/),
   mileage: z.coerce.number().min(0),
   summary: z.string().min(1),
   partsCost: z.coerce.number().min(0),
@@ -36,7 +38,8 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' }) {
     defaultValues: {
       customerId: '',
       vehicleId: '',
-      performedAt: new Date().toISOString().slice(0, 10),
+      performedAt: skopjeDate(new Date()),
+      serviceTime: skopjeTime(new Date()),
       mileage: 0,
       summary: 'Minor Service',
       partsCost: 0,
@@ -48,7 +51,9 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' }) {
 
   if (mode === 'create') {
     const onSubmit = handleSubmit(async (values) => {
-      await createMutation.mutateAsync({ ...values, cost: values.partsCost + values.laborCost });
+      const { serviceTime: _serviceTime, ...serviceValues } = values;
+      void _serviceTime;
+      await createMutation.mutateAsync({ ...serviceValues, cost: values.partsCost + values.laborCost });
       await queryClient.invalidateQueries({ queryKey: ['service-records'] });
       showToast(t('saved'));
       navigate('/services');
@@ -61,7 +66,24 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' }) {
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
             <FormTextField control={control} name="customerId" label="Customer ID" />
             <FormTextField control={control} name="vehicleId" label="Vehicle ID" />
-            <FormTextField control={control} name="performedAt" label="Date" type="date" InputLabelProps={{ shrink: true }} />
+            <Controller
+              control={control}
+              name="performedAt"
+              render={({ field, fieldState }) => (
+                <TextField
+                  name={field.name}
+                  label="Date"
+                  value={/^\d{4}-\d{2}-\d{2}$/.test(field.value) ? skopjeDisplayDate(field.value) : field.value}
+                  placeholder="13.06.2026."
+                  helperText={fieldState.error?.message ?? 'DD.MM.YYYY.'}
+                  error={Boolean(fieldState.error)}
+                  onBlur={field.onBlur}
+                  onChange={(event) => field.onChange(parseSkopjeDisplayDate(event.target.value) ?? event.target.value)}
+                  inputRef={field.ref}
+                />
+              )}
+            />
+            <FormTextField control={control} name="serviceTime" label="Time" placeholder="14:35:22" helperText="HH:mm:ss" />
             <FormTextField control={control} name="mileage" label="Mileage" type="number" />
             <FormTextField control={control} name="summary" label="Service type" />
             <FormTextField control={control} name="replacedParts" label="Replaced parts" />
@@ -105,7 +127,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' }) {
               {records.map((record) => (
                 <TableRow key={record.id} hover>
                   <TableCell>{record.vehicleId}</TableCell>
-                  <TableCell>{new Date(record.performedAt).toLocaleDateString('mk-MK')}</TableCell>
+                  <TableCell>{record.performedAt}</TableCell>
                   <TableCell>{record.summary}</TableCell>
                   <TableCell align="right">{record.partsCost.toLocaleString('mk-MK')} den.</TableCell>
                   <TableCell align="right">{record.laborCost.toLocaleString('mk-MK')} den.</TableCell>

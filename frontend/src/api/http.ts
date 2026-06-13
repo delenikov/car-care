@@ -48,7 +48,13 @@ http.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     const original = error.config as RetryConfig | undefined;
-    const shouldRefresh = error.response?.status === 401 && original && !original._retry && !original.url?.includes('/api/auth/refresh');
+    const authUrl = original?.url ?? '';
+    const shouldRefresh = error.response?.status === 401
+      && original
+      && !original._retry
+      && !authUrl.includes('/api/auth/change-password')
+      && !authUrl.includes('/api/auth/login')
+      && !authUrl.includes('/api/auth/refresh');
     if (!shouldRefresh) {
       return Promise.reject(error);
     }

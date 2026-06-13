@@ -7,7 +7,7 @@ import com.delenicode.carcare.vehicle.Vehicle;
 import com.delenicode.carcare.vehicle.VehicleRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
+  private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Skopje");
+
   private final AppointmentRepository appointments;
   private final CustomerRepository customers;
   private final VehicleRepository vehicles;
@@ -30,10 +32,10 @@ public class AppointmentService {
 
   @Transactional(readOnly = true)
   public List<AppointmentSlotResponse> availableSlots(LocalDate date) {
-    OffsetDateTime dayStart = date.atTime(9, 0).atOffset(ZoneOffset.UTC);
+    OffsetDateTime dayStart = atBusinessZone(date, 9);
     List<AppointmentSlotResponse> slots = new ArrayList<>();
     for (int hour = 9; hour < 17; hour++) {
-      OffsetDateTime startsAt = date.atTime(hour, 0).atOffset(ZoneOffset.UTC);
+      OffsetDateTime startsAt = atBusinessZone(date, hour);
       OffsetDateTime endsAt = startsAt.plusHours(1);
       if (appointments.findConflicts(startsAt, endsAt, null).isEmpty() && !startsAt.isBefore(dayStart)) {
         slots.add(new AppointmentSlotResponse(startsAt, endsAt));
@@ -49,8 +51,8 @@ public class AppointmentService {
     if (!vehicle.getCustomer().getId().equals(customer.getId())) {
       throw new IllegalArgumentException("Vehicle does not belong to customer");
     }
-    OffsetDateTime startsAt = startsAt(request);
-    OffsetDateTime endsAt = endsAt(request, startsAt);
+    OffsetDateTime startsAt = normalize(startsAt(request));
+    OffsetDateTime endsAt = normalize(endsAt(request, startsAt));
     rejectInvalidWindow(startsAt, endsAt);
     rejectConflict(startsAt, endsAt, null);
     Appointment appointment = new Appointment();
@@ -61,7 +63,7 @@ public class AppointmentService {
     appointment.setServiceType(serviceType(request));
     appointment.setNotes(request.notes());
     appointment.setCancellationToken(UUID.randomUUID().toString());
-    appointment.setCancellationExpiresAt(OffsetDateTime.now(ZoneOffset.UTC).plusHours(24));
+    appointment.setCancellationExpiresAt(OffsetDateTime.now(BUSINESS_ZONE).plusHours(24));
     Appointment saved = appointments.save(appointment);
     sendConfirmation(saved);
     return toResponse(saved);
@@ -70,8 +72,8 @@ public class AppointmentService {
   @Transactional
   public AppointmentResponse reschedule(Long id, AppointmentRescheduleRequest request) {
     Appointment appointment = appointments.findById(id).orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
-    OffsetDateTime startsAt = request.startsAt();
-    OffsetDateTime endsAt = request.endsAt() == null ? startsAt.plusHours(1) : request.endsAt();
+    OffsetDateTime startsAt = normalize(request.startsAt());
+    OffsetDateTime endsAt = request.endsAt() == null ? startsAt.plusHours(1) : normalize(request.endsAt());
     rejectInvalidWindow(startsAt, endsAt);
     rejectConflict(startsAt, endsAt, id);
     appointment.setScheduledAt(startsAt);
@@ -82,7 +84,7 @@ public class AppointmentService {
   @Transactional
   public AppointmentResponse cancelByToken(String token) {
     Appointment appointment = appointments.findByCancellationToken(token).orElseThrow(() -> new IllegalArgumentException("Cancellation link is invalid"));
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    OffsetDateTime now = OffsetDateTime.now(BUSINESS_ZONE);
     if (appointment.getCancellationUsedAt() != null || appointment.getCancellationExpiresAt() == null || appointment.getCancellationExpiresAt().isBefore(now)) {
       throw new IllegalArgumentException("Cancellation link has expired");
     }
@@ -93,15 +95,15 @@ public class AppointmentService {
 
   @Transactional
   public ReminderSummaryResponse sendReminders(LocalDate date) {
-    OffsetDateTime startsAt = date.atStartOfDay().atOffset(ZoneOffset.UTC);
+    OffsetDateTime startsAt = date.atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
     OffsetDateTime endsAt = startsAt.plusDays(1);
     List<Appointment> candidates = appointments.findReminderCandidates(startsAt, endsAt);
-    candidates.forEach(appointment -> emailService.send(appointment.getCustomer().getEmail(), "Appointment reminder", "Reminder for " + appointment.getServiceType() + " at " + appointment.getScheduledAt()));
+    candidates.forEach(appointment -> emailService.send(appointment.getCustomer().getEmail(), "Appointment reminder", "Reminder for " + appointment.getServiceType() + " at " + normalize(appointment.getScheduledAt())));
     return new ReminderSummaryResponse(candidates.size());
   }
 
   public AppointmentResponse toResponse(Appointment appointment) {
-    return new AppointmentResponse(appointment.getId(), appointment.getCustomer().getId(), appointment.getVehicle().getId(), appointment.getScheduledAt(), appointment.getEndsAt(), appointment.getServiceType(), appointment.getStatus(), appointment.getNotes(), appointment.getCancellationExpiresAt(), cancellationUrl(appointment));
+    return new AppointmentResponse(appointment.getId(), appointment.getCustomer().getId(), appointment.getVehicle().getId(), normalize(appointment.getScheduledAt()), normalize(appointment.getEndsAt()), appointment.getServiceType(), appointment.getStatus(), appointment.getNotes(), normalize(appointment.getCancellationExpiresAt()), cancellationUrl(appointment));
   }
 
   private OffsetDateTime startsAt(AppointmentRequest request) {
@@ -137,10 +139,18 @@ public class AppointmentService {
   }
 
   private void sendConfirmation(Appointment appointment) {
-    emailService.send(appointment.getCustomer().getEmail(), "Appointment confirmation", "Your appointment for " + appointment.getServiceType() + " is scheduled at " + appointment.getScheduledAt() + ". Cancel: " + cancellationUrl(appointment));
+    emailService.send(appointment.getCustomer().getEmail(), "Appointment confirmation", "Your appointment for " + appointment.getServiceType() + " is scheduled at " + normalize(appointment.getScheduledAt()) + ". Cancel: " + cancellationUrl(appointment));
   }
 
   private String cancellationUrl(Appointment appointment) {
     return appointment.getCancellationToken() == null ? null : "/api/appointments/cancel/" + appointment.getCancellationToken();
+  }
+
+  private OffsetDateTime atBusinessZone(LocalDate date, int hour) {
+    return date.atTime(hour, 0, 0).atZone(BUSINESS_ZONE).toOffsetDateTime();
+  }
+
+  private OffsetDateTime normalize(OffsetDateTime value) {
+    return value == null ? null : value.atZoneSameInstant(BUSINESS_ZONE).toOffsetDateTime();
   }
 }

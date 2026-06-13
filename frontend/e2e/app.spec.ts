@@ -24,6 +24,12 @@ const ok = (data: unknown, message = 'OK') => ({
   data
 });
 
+const fail = (message: string) => ({
+  success: false,
+  message,
+  data: null
+});
+
 async function mockBackend(page: Page) {
   await page.route('**/api/auth/login', async (route) => {
     await route.fulfill({
@@ -162,6 +168,10 @@ async function mockBackend(page: Page) {
   await page.route('**/api/offers/**', async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
+    if (pathname.endsWith('/pdf')) {
+      await route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4 quote' });
+      return;
+    }
     if (pathname.endsWith('/send')) {
       await route.fulfill({
         contentType: 'application/json',
@@ -178,7 +188,19 @@ async function mockBackend(page: Page) {
   await page.route('**/api/documents', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '601', customerId: '101', title: 'Inspection report', type: 'PDF', uploadedAt: '2026-06-12T10:00:00.000Z' }]))
+      body: JSON.stringify(ok([{ id: '601', customerId: '101', serviceRecordId: '401', type: 'INSPECTION', fileName: 'Inspection report.pdf', contentType: 'application/pdf', storageKey: 'generated/inspection-report.pdf' }]))
+    });
+  });
+
+  await page.route('**/api/documents/**', async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname.endsWith('/pdf')) {
+      await route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4 document' });
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok({ id: '601', customerId: '101', serviceRecordId: '401', type: 'INSPECTION', fileName: 'Inspection report.pdf', contentType: 'application/pdf', storageKey: 'generated/inspection-report.pdf' }))
     });
   });
 
@@ -219,9 +241,44 @@ test('logs in and opens the dashboard summary', async ({ page }) => {
   await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL('http://127.0.0.1:5173/');
+  await expect(page.getByTestId('app-toast')).toHaveCount(0);
+  await expect(page.getByTestId('dashboard-hero-card')).toHaveCSS('background-image', 'none');
+  await expect(page.getByTestId('dashboard-hero-card')).toHaveCSS('background-color', 'rgb(20, 35, 31)');
   await expect(page.getByText('Track customers, vehicles, appointments, service records, and offers from one workspace.')).toBeVisible();
   await expect(page.getByText('Customers', { exact: true })).toBeVisible();
   await expect(page.getByText('Vehicles', { exact: true })).toBeVisible();
+});
+
+test('shows specific login validation errors for missing email and wrong password', async ({ page }) => {
+  await page.unroute('**/api/auth/login');
+  await page.route('**/api/auth/login', async (route) => {
+    const body = route.request().postDataJSON() as { email: string; password: string };
+    if (body.email !== admin.email) {
+      await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify(fail('User with that email does not exist')) });
+      return;
+    }
+    if (body.password !== 'password123') {
+      await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify(fail('Password is wrong')) });
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok({ accessToken: 'access-token', refreshToken: 'refresh-token', user: admin }))
+    });
+  });
+
+  await page.goto('/login');
+  await page.locator('input[name="email"]').fill('missing@carcare.test');
+  await page.locator('input[name="password"]').fill('password123');
+  await page.locator('button[type="submit"]').click();
+
+  await expect(page.getByRole('alert')).toContainText('User with that email does not exist');
+
+  await page.locator('input[name="email"]').fill(admin.email);
+  await page.locator('input[name="password"]').fill('wrong-password');
+  await page.locator('button[type="submit"]').click();
+
+  await expect(page.getByRole('alert')).toContainText('Password is wrong');
 });
 
 test('shows implemented authenticated module pages', async ({ page }) => {
@@ -243,6 +300,23 @@ test('shows implemented authenticated module pages', async ({ page }) => {
 
   await page.goto('/appointments');
   await expect(page.locator('.fc')).toBeVisible();
+});
+
+test('hides and blocks admin page for non-admin users', async ({ page }) => {
+  let adminUsersRequested = false;
+  await page.route('**/api/admin/users**', async (route) => {
+    adminUsersRequested = true;
+    await route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify(fail('Forbidden')) });
+  });
+  await signIn(page, employee);
+
+  await page.goto('/');
+  await expect(page.locator('a[href="/admin"]')).toHaveCount(0);
+
+  await page.goto('/admin');
+  await expect(page).toHaveURL('http://127.0.0.1:5173/');
+  await expect(page.locator('a[href="/admin"]')).toHaveCount(0);
+  expect(adminUsersRequested).toBe(false);
 });
 
 test('creates a customer with the backend DTO shape expected by the API client', async ({ page }) => {
@@ -451,7 +525,8 @@ test('records services with parts labor and replaced parts', async ({ page }) =>
   await page.goto('/services/new');
   await page.locator('input[name="customerId"]').fill('101');
   await page.locator('input[name="vehicleId"]').fill('201');
-  await page.locator('input[name="performedAt"]').fill('2026-06-12');
+  await page.locator('input[name="performedAt"]').fill('12.06.2026.');
+  await page.locator('input[name="serviceTime"]').fill('14:35:22');
   await page.locator('input[name="mileage"]').fill('123456');
   await page.locator('input[name="summary"]').fill('Part Replacement Service');
   await page.locator('input[name="replacedParts"]').fill('Oil filter');
@@ -472,6 +547,7 @@ test('records services with parts labor and replaced parts', async ({ page }) =>
     replacedParts: 'Oil filter',
     notes: 'Oil and filters'
   });
+  expect(servicePayload).not.toHaveProperty('serviceTime');
 });
 
 test('shows available appointments and schedules without conflicts', async ({ page }) => {
@@ -504,14 +580,22 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   });
 
   await page.goto('/appointments');
-  await page.locator('input[name="slotDate"]').fill('2026-06-20');
-  await expect(page.getByText('09:00')).toBeVisible();
+  await expect(page.getByLabel('Select available date')).toBeVisible();
+  await expect(page.getByLabel('Select start date')).toBeVisible();
+  await expect(page.getByLabel('Select start time')).toBeVisible();
+  await expect(page.getByLabel('Select end date')).toBeVisible();
+  await expect(page.getByLabel('Select end time')).toBeVisible();
+  await page.locator('input[name="slotDate"]').fill('20.06.2026.');
+  const availableSlot = page.locator('.MuiChip-root').filter({ hasText: '09:00:00' });
+  await expect(availableSlot).toBeVisible();
   expect(availableUrl).toContain('date=2026-06-20');
 
-  await page.getByText('09:00').click();
+  await availableSlot.click();
   await page.locator('input[name="customerId"]').fill('101');
   await page.locator('input[name="vehicleId"]').fill('201');
   await page.locator('input[name="title"]').fill('Minor Service');
+  await expect(page.locator('input[name="startsAt"]')).toHaveValue('20.06.2026. 09:00:00');
+  await expect(page.locator('input[name="endsAt"]')).toHaveValue('20.06.2026. 10:00:00');
   await page.locator('button[type="submit"]').click();
 
   expect(appointmentPayload).toMatchObject({
@@ -519,8 +603,8 @@ test('shows available appointments and schedules without conflicts', async ({ pa
     vehicleId: '201',
     title: 'Minor Service'
   });
-  expect(appointmentPayload?.startsAt).toContain('2026-06-20T09:00');
-  expect(appointmentPayload?.endsAt).toContain('2026-06-20T10:00');
+  expect(appointmentPayload?.startsAt).toBe('2026-06-20T09:00:00+02:00');
+  expect(appointmentPayload?.endsAt).toBe('2026-06-20T10:00:00+02:00');
 });
 
 test('creates and sends quotations with a detailed cost breakdown', async ({ page }) => {
@@ -528,6 +612,7 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
   let offerPayload: Record<string, unknown> | undefined;
   let offerStatus = 'DRAFT';
   let sendCalled = false;
+  let quotePdfCalled = false;
 
   await page.route('**/api/offers', async (route) => {
     const request = route.request();
@@ -547,6 +632,11 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
 
   await page.route('**/api/offers/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
+    if (pathname.endsWith('/pdf')) {
+      quotePdfCalled = true;
+      await route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4 quote' });
+      return;
+    }
     if (pathname.endsWith('/send')) {
       offerStatus = 'SENT';
       sendCalled = true;
@@ -581,8 +671,46 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
 
   await page.goto('/offers/502');
   await expect(page.getByText('Parts cost')).toBeVisible();
+  await page.getByRole('button', { name: 'PDF' }).click();
+  await expect.poll(() => quotePdfCalled).toBeTruthy();
   await page.getByRole('button', { name: 'Испрати' }).click();
   await expect.poll(() => sendCalled).toBeTruthy();
+});
+
+test('sends generated service documents and exports PDFs', async ({ page }) => {
+  await signIn(page);
+  let documentPdfCalled = false;
+  let documentSendCalled = false;
+
+  await page.route('**/api/documents', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok([{ id: '601', customerId: '101', serviceRecordId: '401', type: 'INSPECTION', fileName: 'Inspection report.pdf', contentType: 'application/pdf', storageKey: 'generated/inspection-report.pdf' }]))
+    });
+  });
+
+  await page.route('**/api/documents/**', async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname.endsWith('/pdf')) {
+      documentPdfCalled = true;
+      await route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4 document' });
+      return;
+    }
+    if (pathname.endsWith('/send')) {
+      documentSendCalled = true;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok({ id: '601', customerId: '101', serviceRecordId: '401', type: 'INSPECTION', fileName: 'Inspection report.pdf', contentType: 'application/pdf', storageKey: 'generated/inspection-report.pdf' }))
+    });
+  });
+
+  await page.goto('/documents');
+  await expect(page.getByText('Inspection report.pdf')).toBeVisible();
+  await page.locator('tbody button').nth(1).click();
+  await expect.poll(() => documentPdfCalled).toBeTruthy();
+  await page.locator('tbody button').nth(2).click();
+  await expect.poll(() => documentSendCalled).toBeTruthy();
 });
 
 test('creates updates and disables employee accounts from admin', async ({ page }) => {
@@ -625,10 +753,13 @@ test('creates updates and disables employee accounts from admin', async ({ page 
   });
 
   await page.goto('/admin');
+  await expect(page.locator('input[name="fullName"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Create employee' }).click();
   await page.locator('input[name="fullName"]').fill('New Technician');
   await page.locator('input[name="email"]').fill('new-tech@carcare.test');
   await page.locator('input[name="password"]').fill('password123');
-  await page.locator('input[name="role"]').fill('EMPLOYEE');
+  await page.locator('select[name="enabled"]').selectOption('true');
+  await page.locator('select[name="role"]').selectOption('EMPLOYEE');
   await page.locator('button[type="submit"]').click();
 
   await expect(page.getByText('new-tech@carcare.test')).toBeVisible();
@@ -642,18 +773,21 @@ test('creates updates and disables employee accounts from admin', async ({ page 
 
   await page.getByLabel('edit new-tech@carcare.test').click();
   await page.locator('input[name="fullName"]').fill('Updated Technician');
-  await page.locator('input[name="role"]').fill('MANAGER');
+  await page.locator('select[name="enabled"]').selectOption('false');
+  await page.locator('select[name="role"]').selectOption('ADMIN');
   await page.locator('button[type="submit"]').click();
 
   await expect(page.getByText('Updated Technician')).toBeVisible();
   expect(updatePayload).toMatchObject({
     fullName: 'Updated Technician',
     email: 'new-tech@carcare.test',
-    enabled: true,
-    roles: ['ROLE_MANAGER']
+    enabled: false,
+    roles: ['ROLE_ADMIN']
   });
 
   await page.getByLabel('delete new-tech@carcare.test').click();
+  await expect(page.getByRole('dialog', { name: 'Delete employee' })).toBeVisible();
+  await page.getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('DISABLED').first()).toBeVisible();
   expect(deletedUserId).toBe('3');
 });
@@ -667,6 +801,27 @@ test('changes password and logs out through the authenticated shell', async ({ p
   await page.locator('button[type="submit"]').click();
 
   await expect(page.getByText(/success|успешно|Ð£ÑÐ¿ÐµÑˆÐ½Ð¾/i).first()).toBeVisible();
+  const successToast = page.getByTestId('app-toast');
+  await expect(successToast).toHaveCount(1);
+  await expect(successToast).toHaveCSS('background-color', 'rgb(21, 128, 61)');
+  await expect(successToast).toHaveCSS('background-image', 'none');
+  await expect(page.locator('.MuiAlert-root')).toHaveCount(0);
   await page.locator('button:has([data-testid="LogoutRoundedIcon"])').click();
   await expect(page).toHaveURL(/\/login$/);
+});
+
+test('shows an inline error when current password is wrong', async ({ page }) => {
+  await signIn(page);
+  await page.unroute('**/api/auth/change-password');
+  await page.route('**/api/auth/change-password', async (route) => {
+    await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify(fail('Invalid current password')) });
+  });
+
+  await page.goto('/change-password');
+  await page.locator('input[name="currentPassword"]').fill('wrong-password');
+  await page.locator('input[name="newPassword"]').fill('password456');
+  await page.locator('button[type="submit"]').click();
+
+  await expect(page.getByRole('alert')).toContainText('Invalid current password');
+  await expect(page.getByTestId('app-toast')).toHaveCount(0);
 });

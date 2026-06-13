@@ -381,7 +381,6 @@ The backend shall expose a REST API.
 * FR-40: Automatically generate service documents after service completion.
 * FR-41: Send generated service documents to customers.
 * FR-42: Support PDF export.
-
 ---
 
 ## 4.7 Loyalty and Discount Management

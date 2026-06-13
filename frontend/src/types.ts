@@ -86,9 +86,11 @@ export interface Offer {
 export interface DocumentRecord {
   id: string;
   customerId?: string;
-  vehicleId?: string;
+  serviceRecordId?: string;
   title: string;
-  type: 'PDF' | 'IMAGE' | 'OTHER';
+  type: string;
+  contentType?: string;
+  storageKey?: string;
   uploadedAt: string;
 }
 

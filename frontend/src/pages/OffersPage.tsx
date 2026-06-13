@@ -31,6 +31,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
   const detailQuery = useQuery({ queryKey: ['offers', id], queryFn: () => offersApi.get(id!), enabled: mode === 'detail' && Boolean(id) });
   const createMutation = useMutation({ mutationFn: offersApi.create });
   const sendMutation = useMutation({ mutationFn: offersApi.send });
+  const exportMutation = useMutation({ mutationFn: offersApi.exportPdf });
   const { control, handleSubmit, formState } = useForm<OfferForm>({
     resolver: zodResolver(schema) as never,
     defaultValues: { customerId: '', vehicleId: '', title: '', partsCost: 0, laborCost: 0, status: 'DRAFT' }
@@ -74,17 +75,29 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
             <Typography variant="h2">{offer.title}</Typography>
             <Typography color="text.secondary">{offer.total.toLocaleString('mk-MK')} den.</Typography>
           </Box>
-          <Button
-            variant="contained"
-            disabled={offer.status !== 'DRAFT' || sendMutation.isPending}
-            onClick={async () => {
-              await sendMutation.mutateAsync(offer.id);
-              await queryClient.invalidateQueries({ queryKey: ['offers', id] });
-              showToast(t('send'));
-            }}
-          >
-            {t('send')}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              disabled={exportMutation.isPending}
+              onClick={async () => {
+                await exportMutation.mutateAsync(offer.id);
+                showToast('PDF');
+              }}
+            >
+              PDF
+            </Button>
+            <Button
+              variant="contained"
+              disabled={offer.status !== 'DRAFT' || sendMutation.isPending}
+              onClick={async () => {
+                await sendMutation.mutateAsync(offer.id);
+                await queryClient.invalidateQueries({ queryKey: ['offers', id] });
+                showToast(t('send'));
+              }}
+            >
+              {t('send')}
+            </Button>
+          </Stack>
         </Stack>
         <Paper sx={{ p: { xs: 3, md: 4 } }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>

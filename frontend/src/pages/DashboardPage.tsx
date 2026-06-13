@@ -31,7 +31,7 @@ export function DashboardPage() {
   return (
     <Stack spacing={4}>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.25fr 0.75fr' }, gap: 3, alignItems: 'stretch' }}>
-        <Card sx={{ bgcolor: 'primary.dark', color: 'primary.contrastText', overflow: 'hidden', position: 'relative' }}>
+        <Card data-testid="dashboard-hero-card" sx={{ bgcolor: 'primary.dark', backgroundImage: 'none', color: 'primary.contrastText', overflow: 'hidden', position: 'relative' }}>
           <Box sx={{ position: 'absolute', inset: 'auto -8% -36% auto', width: { xs: 180, md: 300 }, height: { xs: 180, md: 300 }, borderRadius: '50%', bgcolor: 'secondary.main', opacity: 0.35 }} />
           <CardContent sx={{ p: { xs: 3, md: 5 }, position: 'relative' }}>
             <Chip label="ASMS" color="secondary" sx={{ mb: 3 }} />

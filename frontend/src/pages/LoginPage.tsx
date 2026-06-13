@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Box, Button, Paper, Stack, Typography } from '@mui/material';
@@ -6,8 +6,8 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { useAuth } from '../auth/AuthContext';
+import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { FormTextField } from '../components/FormTextField';
-import { useToast } from '../components/ToastProvider';
 
 const schema = z.object({
   email: z.string().email(),
@@ -21,7 +21,7 @@ export function LoginPage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { showToast } = useToast();
+  const [errorMessage, setErrorMessage] = useState('');
   const from = useMemo(() => (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/', [location.state]);
   const { control, handleSubmit, formState } = useForm<LoginForm>({
     resolver: zodResolver(schema),
@@ -33,9 +33,13 @@ export function LoginPage() {
   }
 
   const onSubmit = handleSubmit(async (values) => {
-    await auth.login(values);
-    showToast(t('saved'));
-    navigate(from, { replace: true });
+    setErrorMessage('');
+    try {
+      await auth.login(values);
+      navigate(from, { replace: true });
+    } catch (error) {
+      setErrorMessage(apiErrorMessage(error, 'Login failed'));
+    }
   });
 
   return (
@@ -60,6 +64,7 @@ export function LoginPage() {
               <Typography variant="h3">{t('login')}</Typography>
               <Typography color="text.secondary">{t('appName')}</Typography>
             </Box>
+            <ApiErrorAlert message={errorMessage} />
             <FormTextField control={control} name="email" label={t('email')} autoComplete="email" />
             <FormTextField control={control} name="password" label={t('password')} type="password" autoComplete="current-password" />
             <Button type="submit" variant="contained" size="large" disabled={formState.isSubmitting}>

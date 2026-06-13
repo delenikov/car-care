@@ -1,6 +1,6 @@
 # Spec Implementation Check
 
-Date: 2026-06-12
+Date: 2026-06-13
 
 Scope checked:
 
@@ -11,9 +11,9 @@ Note: no `sds.md` file exists in this repository. This check treats `docs/srs.md
 
 ## Summary
 
-The project is not fully implemented against the SRS and mini-spec. It currently provides a backend and frontend skeleton for authentication, dashboard counts, customers, vehicles, appointments, service records, offers, service documents, admin users, and loyalty rules.
+FR-1 through FR-42 from `docs/srs.md` are implemented on the backend and frontend and are covered by unit tests, PostgreSQL Testcontainers integration tests, and Playwright e2e tests.
 
-Most modules are CRUD-thin and do not yet implement the complete workflow, search, notification, document-generation, loyalty, public scheduling, architecture, and database requirements.
+The remaining gaps are outside FR-1 through FR-42 or are non-functional/architecture concerns, including FR-43 and FR-44 loyalty automation, real SMTP transport configuration, binary object storage, `/api/v1` endpoint versioning, UUID identifiers, pagination, and audit-field expansion.
 
 ## Implemented Or Mostly Implemented
 
@@ -86,6 +86,7 @@ Most modules are CRUD-thin and do not yet implement the complete workflow, searc
 - Unit tests for service-record parts/labor total calculation, backward-compatible total handling, customer/vehicle ownership validation, and vehicle history lookup.
 - Unit tests for appointment available slots, conflict prevention, confirmation email, 24-hour cancellation links, cancellation invalidation, and reminders.
 - Unit tests for offer parts/labor total calculation, quote email sending, and PDF export delegation.
+- Unit tests for generated service-document metadata, service-document email sending, service-document PDF export delegation, and PDF byte rendering.
 - PostgreSQL Testcontainers integration tests for:
   - Login, admin user creation/update/delete, RBAC, password change, refresh-token revocation, logout revocation.
   - Implemented operational CRUD path: customer create/search/delete, customer vehicles, customer service history, vehicle create/search/update/detail/history, appointment availability/scheduling/conflict/cancellation/reminders, service record with calculated total and generated document, offer breakdown/send/PDF, document send/PDF, dashboard summary.
@@ -99,6 +100,8 @@ Most modules are CRUD-thin and do not yet implement the complete workflow, searc
   - Service-record creation with service type, mileage, replaced parts, parts/labor cost breakdown, and calculated total.
   - Appointment available-slot display and scheduling DTO mapping.
   - Offer creation with parts/labor breakdown and quote send action.
+  - Quote PDF export action.
+  - Generated service-document PDF export and send actions.
   - Admin employee create/update/disable.
   - Password change and logout from the authenticated shell.
 

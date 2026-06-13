@@ -18,7 +18,7 @@ public class PdfService {
     content.append("ET");
     byte[] stream = content.toString().getBytes(StandardCharsets.UTF_8);
     String pdf = """
-        %PDF-1.4
+        %%PDF-1.4
         1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
         2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
         3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj
@@ -28,7 +28,7 @@ public class PdfService {
         endstream endobj
         trailer << /Root 1 0 R >>
         %%EOF
-        """.formatted(stream.length, content);
+        """.formatted(stream.length, content).stripLeading();
     return pdf.getBytes(StandardCharsets.UTF_8);
   }
 

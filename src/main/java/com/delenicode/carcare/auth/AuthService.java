@@ -34,14 +34,17 @@ public class AuthService {
 
   @Transactional
   public AuthResponse login(LoginRequest request) {
-    AppUser user = users.findByEmail(request.email()).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+    AppUser user = users.findByEmail(request.email()).orElseThrow(() -> {
+      auditService.record(request.email(), "LOGIN_FAILED", "AppUser", null, "Email not found");
+      return new BadCredentialsException("User with that email does not exist");
+    });
     try {
       authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
     } catch (AuthenticationException ex) {
       user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
       users.save(user);
       auditService.record(request.email(), "LOGIN_FAILED", "AppUser", user.getId(), "Invalid password");
-      throw new BadCredentialsException("Invalid credentials");
+      throw new BadCredentialsException("Password is wrong");
     }
     user.setFailedLoginAttempts(0);
     user.setLastLoginAt(Instant.now());

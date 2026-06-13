@@ -19,6 +19,7 @@ import { OffersPage } from './pages/OffersPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { AdminPage } from './pages/AdminPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import type { Role } from './types';
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const auth = useAuth();
@@ -30,6 +31,16 @@ function RequireAuth({ children }: { children: ReactElement }) {
 
   if (!auth.isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return children;
+}
+
+function RequireRole({ role, children }: { role: Role; children: ReactElement }) {
+  const { user } = useAuth();
+
+  if (!user?.roles?.includes(role)) {
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -63,7 +74,14 @@ const router = createBrowserRouter([
       { path: 'offers/new', element: <OffersPage mode="create" /> },
       { path: 'offers/:id', element: <OffersPage mode="detail" /> },
       { path: 'documents', element: <DocumentsPage /> },
-      { path: 'admin', element: <AdminPage /> },
+      {
+        path: 'admin',
+        element: (
+          <RequireRole role="ROLE_ADMIN">
+            <AdminPage />
+          </RequireRole>
+        )
+      },
       { path: '*', element: <NotFoundPage /> }
     ]
   }

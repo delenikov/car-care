@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 import com.delenicode.carcare.audit.AuditService;
 import com.delenicode.carcare.auth.AuthService;
 import com.delenicode.carcare.auth.ChangePasswordRequest;
+import com.delenicode.carcare.auth.LoginRequest;
 import com.delenicode.carcare.auth.RefreshRequest;
 import com.delenicode.carcare.auth.RefreshToken;
 import com.delenicode.carcare.auth.RefreshTokenRepository;
@@ -24,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +51,32 @@ class AuthServiceTest {
   @BeforeEach
   void setUp() {
     authService = new AuthService(authenticationManager, users, refreshTokens, jwtService, userService, auditService, passwordEncoder);
+  }
+
+  @Test
+  void loginRejectsMissingEmailWithSpecificMessage() {
+    when(users.findByEmail("missing@carcare.local")).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> authService.login(new LoginRequest("missing@carcare.local", "password123")))
+        .isInstanceOf(BadCredentialsException.class)
+        .hasMessage("User with that email does not exist");
+
+    verify(auditService).record("missing@carcare.local", "LOGIN_FAILED", "AppUser", null, "Email not found");
+  }
+
+  @Test
+  void loginRejectsWrongPasswordWithSpecificMessageAndCountsFailure() {
+    AppUser user = user("tech@carcare.local");
+    when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+    when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenThrow(new BadCredentialsException("bad"));
+
+    assertThatThrownBy(() -> authService.login(new LoginRequest(user.getEmail(), "wrong-password")))
+        .isInstanceOf(BadCredentialsException.class)
+        .hasMessage("Password is wrong");
+
+    assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
+    verify(users).save(user);
+    verify(auditService).record(user.getEmail(), "LOGIN_FAILED", "AppUser", user.getId(), "Invalid password");
   }
 
   @Test

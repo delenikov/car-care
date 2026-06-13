@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -29,6 +29,7 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import LockResetRoundedIcon from '@mui/icons-material/LockResetRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import { useAuth } from '../auth/AuthContext';
+import type { Role } from '../types';
 
 const drawerWidth = 280;
 
@@ -40,14 +41,15 @@ const navItems = [
   { to: '/services', label: 'services', icon: <BuildRoundedIcon /> },
   { to: '/offers', label: 'offers', icon: <RequestQuoteRoundedIcon /> },
   { to: '/documents', label: 'documents', icon: <DescriptionRoundedIcon /> },
-  { to: '/admin', label: 'admin', icon: <AdminPanelSettingsRoundedIcon /> }
-];
+  { to: '/admin', label: 'admin', icon: <AdminPanelSettingsRoundedIcon />, requiredRole: 'ROLE_ADMIN' as Role }
+] satisfies Array<{ to: string; label: string; icon: ReactNode; requiredRole?: Role }>;
 
 function DrawerContent({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const displayRole = user?.roles?.[0]?.replace('ROLE_', '') ?? 'EMPLOYEE';
+  const visibleNavItems = navItems.filter((item) => !item.requiredRole || user?.roles?.includes(item.requiredRole));
 
   const handleLogout = async () => {
     await logout();
@@ -64,7 +66,7 @@ function DrawerContent({ onNavigate }: { onNavigate?: () => void }) {
         </Typography>
       </Box>
       <List sx={{ flex: 1 }}>
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <ListItemButton
             key={item.to}
             component={NavLink}

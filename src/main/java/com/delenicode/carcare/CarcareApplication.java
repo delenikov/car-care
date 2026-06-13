@@ -13,9 +13,9 @@ public class CarcareApplication {
     SpringApplication.run(CarcareApplication.class, args);
   }
 
-  @Bean
-  ApplicationRunner adminUserInitializer(UserService users) {
-    return args -> users.ensureAdminUser("admin@carcare.local", "System Admin", "admin213");
-  }
+//  @Bean
+//  ApplicationRunner adminUserInitializer(UserService users) {
+//    return args -> users.ensureAdminUser("admin@carcare.local", "System Admin", "admin123");
+//  }
 
 }

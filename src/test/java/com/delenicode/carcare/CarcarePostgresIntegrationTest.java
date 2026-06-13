@@ -11,7 +11,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -57,6 +56,12 @@ class CarcarePostgresIntegrationTest {
 
   @Test
   void authLifecycleAndAdminRbacWorkAgainstPostgres() throws Exception {
+    JsonNode missingEmail = post("/api/auth/login", null, Map.of("email", "missing@carcare.local", "password", "password123"), 401);
+    assertThat(missingEmail.get("message").asText()).isEqualTo("User with that email does not exist");
+
+    JsonNode wrongPassword = post("/api/auth/login", null, Map.of("email", "admin@carcare.local", "password", "wrong-password"), 401);
+    assertThat(wrongPassword.get("message").asText()).isEqualTo("Password is wrong");
+
     TokenPair admin = login("admin@carcare.local", "admin213");
     String employeeEmail = "employee-" + UUID.randomUUID() + "@carcare.test";
 
@@ -144,7 +149,7 @@ class CarcarePostgresIntegrationTest {
     JsonNode vehicleDetail = get("/api/vehicles/" + vehicleId, admin, 200).get("data");
     assertThat(vehicleDetail.get("make").asText()).isEqualTo("Toyota");
 
-    OffsetDateTime appointmentStart = OffsetDateTime.of(2026, 6, 20, 9, 0, 0, 0, ZoneOffset.UTC);
+    OffsetDateTime appointmentStart = OffsetDateTime.parse("2026-06-20T09:00:00+02:00");
     JsonNode appointment = post("/api/appointments", admin, Map.of(
         "customerId", customerId,
         "vehicleId", vehicleId,

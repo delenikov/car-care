@@ -52,7 +52,7 @@ class AppointmentServiceTest {
   void createGeneratesCancellationLinkAndSendsConfirmation() {
     Customer customer = customer(10L);
     Vehicle vehicle = vehicle(20L, customer);
-    OffsetDateTime startsAt = OffsetDateTime.parse("2026-06-15T09:00:00Z");
+    OffsetDateTime startsAt = OffsetDateTime.parse("2026-06-15T09:00:00+02:00");
     when(customers.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(customer));
     when(vehicles.findById(20L)).thenReturn(Optional.of(vehicle));
     when(appointments.findConflicts(startsAt, startsAt.plusHours(1), null)).thenReturn(List.of());
@@ -66,14 +66,14 @@ class AppointmentServiceTest {
 
     assertThat(response.cancellationUrl()).startsWith("/api/appointments/cancel/");
     assertThat(response.cancellationExpiresAt()).isAfter(OffsetDateTime.now(ZoneOffset.UTC).plusHours(23));
-    verify(emailService).send("ada@carcare.test", "Appointment confirmation", "Your appointment for Minor Service is scheduled at 2026-06-15T09:00Z. Cancel: " + response.cancellationUrl());
+    verify(emailService).send("ada@carcare.test", "Appointment confirmation", "Your appointment for Minor Service is scheduled at 2026-06-15T09:00+02:00. Cancel: " + response.cancellationUrl());
   }
 
   @Test
   void createRejectsConflictingAppointment() {
     Customer customer = customer(10L);
     Vehicle vehicle = vehicle(20L, customer);
-    OffsetDateTime startsAt = OffsetDateTime.parse("2026-06-15T09:00:00Z");
+    OffsetDateTime startsAt = OffsetDateTime.parse("2026-06-15T09:00:00+02:00");
     when(customers.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(customer));
     when(vehicles.findById(20L)).thenReturn(Optional.of(vehicle));
     when(appointments.findConflicts(startsAt, startsAt.plusHours(1), null)).thenReturn(List.of(new Appointment()));
@@ -112,7 +112,7 @@ class AppointmentServiceTest {
   @Test
   void availableSlotsExcludeConflictingHours() {
     LocalDate date = LocalDate.of(2026, 6, 15);
-    OffsetDateTime nine = date.atTime(9, 0).atOffset(ZoneOffset.UTC);
+    OffsetDateTime nine = OffsetDateTime.parse("2026-06-15T09:00:00+02:00");
     when(appointments.findConflicts(nine, nine.plusHours(1), null)).thenReturn(List.of(new Appointment()));
 
     var slots = appointmentService.availableSlots(date);
@@ -124,13 +124,13 @@ class AppointmentServiceTest {
   @Test
   void sendRemindersEmailsMatchingAppointments() {
     Customer customer = customer(10L);
-    Appointment appointment = appointment(30L, customer, OffsetDateTime.parse("2026-06-15T09:00:00Z"));
-    when(appointments.findReminderCandidates(OffsetDateTime.parse("2026-06-15T00:00:00Z"), OffsetDateTime.parse("2026-06-16T00:00:00Z"))).thenReturn(List.of(appointment));
+    Appointment appointment = appointment(30L, customer, OffsetDateTime.parse("2026-06-15T09:00:00+02:00"));
+    when(appointments.findReminderCandidates(OffsetDateTime.parse("2026-06-15T00:00:00+02:00"), OffsetDateTime.parse("2026-06-16T00:00:00+02:00"))).thenReturn(List.of(appointment));
 
     var response = appointmentService.sendReminders(LocalDate.of(2026, 6, 15));
 
     assertThat(response.sent()).isEqualTo(1);
-    verify(emailService).send("ada@carcare.test", "Appointment reminder", "Reminder for Minor Service at 2026-06-15T09:00Z");
+    verify(emailService).send("ada@carcare.test", "Appointment reminder", "Reminder for Minor Service at 2026-06-15T09:00+02:00");
   }
 
   private Customer customer(Long id) {
