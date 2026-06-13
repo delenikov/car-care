@@ -16,9 +16,12 @@ import com.delenicode.carcare.auth.RefreshTokenRepository;
 import com.delenicode.carcare.security.JwtService;
 import com.delenicode.carcare.user.AppUser;
 import com.delenicode.carcare.user.AppUserRepository;
+import com.delenicode.carcare.user.UserResponse;
 import com.delenicode.carcare.user.UserService;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -90,6 +93,30 @@ class AuthServiceTest {
 
     assertThat(token.isRevoked()).isTrue();
     verify(auditService).record(user.getEmail(), "LOGOUT", "AppUser", user.getId(), "Refresh token revoked");
+  }
+
+  @Test
+  void refreshRotatesRefreshTokenAndReturnsNewAccessToken() {
+    AppUser user = user("tech@carcare.local");
+    RefreshToken oldToken = new RefreshToken();
+    oldToken.setUser(user);
+    oldToken.setToken("old-refresh");
+    oldToken.setExpiresAt(Instant.now().plusSeconds(3600));
+    when(refreshTokens.findByTokenAndRevokedFalse("old-refresh")).thenReturn(Optional.of(oldToken));
+    when(jwtService.createAccessToken(org.mockito.ArgumentMatchers.eq(user.getEmail()), org.mockito.ArgumentMatchers.anyMap())).thenReturn("new-access");
+    when(jwtService.createRefreshToken(user.getEmail())).thenReturn("new-refresh");
+    when(jwtService.expiresAt("new-refresh")).thenReturn(Instant.now().plusSeconds(3600));
+    when(userService.toResponse(user)).thenReturn(new UserResponse(42L, user.getEmail(), user.getFullName(), true, 0, Set.of()));
+
+    var response = authService.refresh(new RefreshRequest("old-refresh"));
+
+    assertThat(oldToken.isRevoked()).isTrue();
+    assertThat(response.accessToken()).isEqualTo("new-access");
+    assertThat(response.refreshToken()).isEqualTo("new-refresh");
+    verify(refreshTokens).save(org.mockito.ArgumentMatchers.argThat(token ->
+        token.getUser() == user
+            && token.getToken().equals("new-refresh")
+            && !token.isRevoked()));
   }
 
   @Test

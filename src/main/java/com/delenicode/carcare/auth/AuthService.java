@@ -55,12 +55,15 @@ public class AuthService {
 
   @Transactional
   public AuthResponse refresh(RefreshRequest request) {
-    RefreshToken stored = refreshTokens.findByTokenAndRevokedFalse(request.refreshToken())
+    RefreshToken stored = refreshTokens
+        .findByTokenAndRevokedFalse(request.refreshToken())
         .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
+
     if (stored.getExpiresAt().isBefore(Instant.now())) {
       stored.setRevoked(true);
       throw new BadCredentialsException("Refresh token expired");
     }
+
     stored.setRevoked(true);
     return tokensFor(stored.getUser());
   }

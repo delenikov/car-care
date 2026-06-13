@@ -36,6 +36,30 @@ export const http = axios.create({
   headers: { 'Content-Type': 'application/json' }
 });
 
+let refreshRequest: Promise<AuthResponse> | null = null;
+
+export const refreshAccessToken = () => {
+  if (!refreshRequest) {
+    refreshRequest = (async () => {
+      const refreshToken = refreshTokenStorage.get();
+      if (!refreshToken) {
+        throw new Error('Missing refresh token');
+      }
+      const { data } = await axios.post<ApiResponse<AuthResponse>>(
+        '/api/auth/refresh',
+        { refreshToken },
+        { baseURL: http.defaults.baseURL, withCredentials: true }
+      );
+      tokenStorage.set(data.data.accessToken);
+      refreshTokenStorage.set(data.data.refreshToken);
+      return data.data;
+    })().finally(() => {
+      refreshRequest = null;
+    });
+  }
+  return refreshRequest;
+};
+
 http.interceptors.request.use((config) => {
   const token = tokenStorage.get();
   if (token) {
@@ -61,18 +85,8 @@ http.interceptors.response.use(
 
     original._retry = true;
     try {
-      const refreshToken = refreshTokenStorage.get();
-      if (!refreshToken) {
-        throw new Error('Missing refresh token');
-      }
-      const { data } = await axios.post<ApiResponse<AuthResponse>>(
-        '/api/auth/refresh',
-        { refreshToken },
-        { baseURL: http.defaults.baseURL, withCredentials: true }
-      );
-      tokenStorage.set(data.data.accessToken);
-      refreshTokenStorage.set(data.data.refreshToken);
-      original.headers.Authorization = `Bearer ${data.data.accessToken}`;
+      const response = await refreshAccessToken();
+      original.headers.Authorization = `Bearer ${response.accessToken}`;
       return http(original);
     } catch (refreshError) {
       tokenStorage.clear();

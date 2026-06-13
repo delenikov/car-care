@@ -1,4 +1,4 @@
-import { http, refreshTokenStorage, tokenStorage, unwrap } from './http';
+import { http, refreshAccessToken, refreshTokenStorage, tokenStorage, unwrap } from './http';
 import type { Appointment, AppointmentSlot, AuthResponse, Customer, DashboardSummary, DocumentRecord, LoyaltyRule, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
 import { skopjeOffsetDateTime } from '../utils/dateTime';
 
@@ -14,10 +14,7 @@ export interface ChangePasswordPayload {
 
 export const authApi = {
   login: (payload: LoginPayload) => unwrap(http.post<AuthResponse>('/api/auth/login', payload)),
-  refresh: () => {
-    const refreshToken = refreshTokenStorage.get();
-    return unwrap(http.post<AuthResponse>('/api/auth/refresh', { refreshToken }));
-  },
+  refresh: refreshAccessToken,
   changePassword: (payload: ChangePasswordPayload) => unwrap(http.post<void>('/api/auth/change-password', payload)),
   logout: async () => {
     const refreshToken = refreshTokenStorage.get();
