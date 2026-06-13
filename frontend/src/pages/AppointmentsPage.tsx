@@ -1,27 +1,22 @@
-import { useMemo, useRef, useState, type ComponentProps } from 'react';
+import { useMemo, useState, type ComponentProps } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import { zodResolver } from '@hookform/resolvers/zod';
-import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
-import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
-import { Box, Button, Chip, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { appointmentsApi } from '../api/modules';
+import { DateInput, DateTimeInput } from '../components/DateTimeInputs';
 import { FormTextField } from '../components/FormTextField';
 import { LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import {
-  parseSkopjeDisplayDate,
-  parseSkopjeDisplayDateTime,
   skopjeDate,
   skopjeDateTimeInput,
-  skopjeDisplayDate,
-  skopjeDisplayDateTime,
   skopjeOffsetDateTime,
   skopjeTime
 } from '../utils/dateTime';
@@ -30,26 +25,19 @@ const schema = z.object({
   customerId: z.string().min(1),
   vehicleId: z.string().min(1),
   title: z.string().min(1),
-  startsAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/),
-  endsAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/),
+  startsAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
+  endsAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
   status: z.literal('BOOKED')
 });
 
 type AppointmentForm = z.output<typeof schema>;
 type EventDropArg = Parameters<NonNullable<ComponentProps<typeof FullCalendar>['eventDrop']>>[0];
 
-const timePart = (value: string) => value.split('T')[1] ?? '00:00:00';
-const datePart = (value: string) => value.split('T')[0] ?? skopjeDate(new Date());
-const normalizeTime = (value: string) => (value.length === 5 ? `${value}:00` : value);
-const combineDateTime = (date: string, time: string) => `${date}T${normalizeTime(time)}`;
-
 export function AppointmentsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const slotDatePickerRef = useRef<HTMLInputElement | null>(null);
   const [slotDate, setSlotDate] = useState(skopjeDate(new Date()));
-  const [slotDateText, setSlotDateText] = useState(skopjeDisplayDate(new Date()));
   const { data = [], isLoading } = useQuery({ queryKey: ['appointments'], queryFn: appointmentsApi.list });
   const availableQuery = useQuery({ queryKey: ['appointments', 'available', slotDate], queryFn: () => appointmentsApi.available(slotDate) });
   const createMutation = useMutation({ mutationFn: appointmentsApi.create });
@@ -126,8 +114,8 @@ export function AppointmentsPage() {
             selectable
             nowIndicator
             timeZone="Europe/Skopje"
-            slotLabelFormat={{ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }}
-            eventTimeFormat={{ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }}
+            slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+            eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
             height="auto"
             eventDrop={handleDrop}
             select={(selection) => {
@@ -139,43 +127,14 @@ export function AppointmentsPage() {
         <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 }, alignSelf: 'start' }}>
           <Stack spacing={2.5}>
             <Typography variant="h4">{t('bookAppointment')}</Typography>
-            <TextField
+            <DateInput
               name="slotDate"
               label="Available date"
-              value={slotDateText}
-              placeholder="13.06.2026."
-              helperText="DD.MM.YYYY."
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton aria-label="Select available date" edge="end" onClick={() => slotDatePickerRef.current?.showPicker?.()}>
-                      <CalendarMonthRoundedIcon />
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-              onChange={(event) => {
-                setSlotDateText(event.target.value);
-                const parsed = parseSkopjeDisplayDate(event.target.value);
-                if (parsed) {
-                  setSlotDate(parsed);
-                }
-              }}
-              onBlur={() => setSlotDateText(skopjeDisplayDate(slotDate))}
-              InputLabelProps={{ shrink: true }}
-            />
-            <Box
-              component="input"
-              ref={slotDatePickerRef}
-              type="date"
               value={slotDate}
-              onChange={(event) => {
-                setSlotDate(event.target.value);
-                setSlotDateText(skopjeDisplayDate(event.target.value));
-              }}
-              sx={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-              aria-hidden="true"
-              tabIndex={-1}
+              error={false}
+              onBlur={() => undefined}
+              onChange={(value) => setSlotDate(value)}
+              helperText="DD.MM.YYYY"
             />
             <Stack direction="row" flexWrap="wrap" gap={1}>
               {(availableQuery.data ?? []).map((slot) => (
@@ -196,12 +155,12 @@ export function AppointmentsPage() {
               control={control}
               name="startsAt"
               render={({ field, fieldState }) => (
-                <DateTimeField
+                <DateTimeInput
                   label="Start"
                   name={field.name}
                   value={field.value}
                   error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message ?? 'DD.MM.YYYY. HH:mm:ss'}
+                  helperText={fieldState.error?.message ?? 'DD.MM.YYYY HH:mm'}
                   onBlur={field.onBlur}
                   onChange={field.onChange}
                   inputRef={field.ref}
@@ -212,12 +171,12 @@ export function AppointmentsPage() {
               control={control}
               name="endsAt"
               render={({ field, fieldState }) => (
-                <DateTimeField
+                <DateTimeInput
                   label="End"
                   name={field.name}
                   value={field.value}
                   error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message ?? 'DD.MM.YYYY. HH:mm:ss'}
+                  helperText={fieldState.error?.message ?? 'DD.MM.YYYY HH:mm'}
                   onBlur={field.onBlur}
                   onChange={field.onChange}
                   inputRef={field.ref}
@@ -231,80 +190,5 @@ export function AppointmentsPage() {
         </Paper>
       </Box>
     </Stack>
-  );
-}
-
-function DateTimeField({
-  error,
-  helperText,
-  inputRef,
-  label,
-  name,
-  onBlur,
-  onChange,
-  value
-}: {
-  error: boolean;
-  helperText: string;
-  inputRef: (element: HTMLInputElement | null) => void;
-  label: string;
-  name: string;
-  onBlur: () => void;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  const datePickerRef = useRef<HTMLInputElement | null>(null);
-  const timePickerRef = useRef<HTMLInputElement | null>(null);
-  const displayValue = value.includes('T') ? skopjeDisplayDateTime(value) : value;
-  const currentDate = value.includes('T') ? datePart(value) : skopjeDate(new Date());
-  const currentTime = value.includes('T') ? timePart(value) : '00:00:00';
-
-  return (
-    <Box sx={{ position: 'relative' }}>
-      <TextField
-        name={name}
-        label={label}
-        value={displayValue}
-        placeholder="13.06.2026. 14:35:22"
-        helperText={helperText}
-        error={error}
-        onBlur={onBlur}
-        onChange={(event) => onChange(parseSkopjeDisplayDateTime(event.target.value) ?? event.target.value)}
-        inputRef={inputRef}
-        InputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton aria-label={`Select ${label.toLowerCase()} date`} onClick={() => datePickerRef.current?.showPicker?.()}>
-                <CalendarMonthRoundedIcon />
-              </IconButton>
-              <IconButton aria-label={`Select ${label.toLowerCase()} time`} edge="end" onClick={() => timePickerRef.current?.showPicker?.()}>
-                <ScheduleRoundedIcon />
-              </IconButton>
-            </InputAdornment>
-          )
-        }}
-      />
-      <Box
-        component="input"
-        ref={datePickerRef}
-        type="date"
-        value={currentDate}
-        onChange={(event) => onChange(combineDateTime(event.target.value, currentTime))}
-        sx={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-        aria-hidden="true"
-        tabIndex={-1}
-      />
-      <Box
-        component="input"
-        ref={timePickerRef}
-        type="time"
-        step={1}
-        value={currentTime}
-        onChange={(event) => onChange(combineDateTime(currentDate, event.target.value))}
-        sx={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-        aria-hidden="true"
-        tabIndex={-1}
-      />
-    </Box>
   );
 }

@@ -17,6 +17,19 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
       select vehicle from Vehicle vehicle
       where vehicle.customer.deleted = false
         and (
+          lower(vehicle.plateNumber) like lower(concat('%', :query, '%'))
+          or lower(vehicle.vin) like lower(concat('%', :query, '%'))
+          or lower(vehicle.customer.firstName) like lower(concat('%', :query, '%'))
+          or lower(vehicle.customer.lastName) like lower(concat('%', :query, '%'))
+          or lower(vehicle.customer.fullName) like lower(concat('%', :query, '%'))
+        )
+      """)
+  List<Vehicle> findBySearchTerm(@Param("query") String query);
+
+  @Query("""
+      select vehicle from Vehicle vehicle
+      where vehicle.customer.deleted = false
+        and (
           lower(vehicle.customer.firstName) like lower(concat('%', :owner, '%'))
           or lower(vehicle.customer.lastName) like lower(concat('%', :owner, '%'))
           or lower(vehicle.customer.fullName) like lower(concat('%', :owner, '%'))

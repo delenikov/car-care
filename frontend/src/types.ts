@@ -35,11 +35,14 @@ export interface Customer {
 export interface Vehicle {
   id: string;
   customerId: string;
+  customerName?: string;
   plate: string;
   make: string;
   model: string;
   year: number;
   vin?: string;
+  fuelType?: string;
+  engine?: string;
 }
 
 export interface Appointment {

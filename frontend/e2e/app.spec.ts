@@ -74,7 +74,7 @@ async function mockBackend(page: Page) {
     if (pathname.endsWith('/vehicles')) {
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok([{ id: '201', customerId: '101', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123' }]))
+        body: JSON.stringify(ok([{ id: '201', customerId: '101', customerName: 'Ada Lovelace', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123', fuelType: 'Diesel', engine: '2.0 TDI' }]))
       });
       return;
     }
@@ -98,7 +98,7 @@ async function mockBackend(page: Page) {
   await page.route('**/api/vehicles', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '201', customerId: '101', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123' }]))
+      body: JSON.stringify(ok([{ id: '201', customerId: '101', customerName: 'Ada Lovelace', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123', fuelType: 'Diesel', engine: '2.0 TDI' }]))
     });
   });
 
@@ -113,7 +113,7 @@ async function mockBackend(page: Page) {
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok({ id: '201', customerId: '101', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123' }))
+      body: JSON.stringify(ok({ id: '201', customerId: '101', customerName: 'Ada Lovelace', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123', fuelType: 'Diesel', engine: '2.0 TDI' }))
     });
   });
 
@@ -147,6 +147,13 @@ async function mockBackend(page: Page) {
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify(ok([{ id: '401', customerId: '101', vehicleId: '201', serviceDate: '2026-06-12', serviceType: 'Oil and filters', partsCost: 1500, laborCost: 2000, totalAmount: 3500, odometer: 123456, replacedParts: 'Oil filter' }]))
+    });
+  });
+
+  await page.route('**/api/service-records/*', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok({ id: '401', customerId: '101', vehicleId: '201', serviceDate: '2026-06-12', serviceType: 'Oil and filters', partsCost: 1500, laborCost: 2000, totalAmount: 3500, odometer: 123456, replacedParts: 'Oil filter', notes: 'Oil and filters' }))
     });
   });
 
@@ -219,6 +226,23 @@ async function signIn(page: Page, user = admin) {
     window.sessionStorage.setItem('carcare.refreshToken', 'refresh-token');
     window.sessionStorage.setItem('carcare.user', JSON.stringify(storedUser));
   }, user);
+}
+
+async function fillDatePickerGroup(page: Page, name: string, value: string) {
+  const [day, month, year] = value.split('.');
+  const group = page.getByRole('group', { name });
+  await group.getByRole('spinbutton', { name: 'Day' }).fill(day);
+  await group.getByRole('spinbutton', { name: 'Month' }).fill(month);
+  await group.getByRole('spinbutton', { name: 'Year' }).fill(year);
+  await page.keyboard.press('Tab');
+}
+
+async function fillTimePickerGroup(page: Page, name: string, value: string) {
+  const [hours, minutes] = value.split(':');
+  const group = page.getByRole('group', { name });
+  await group.getByRole('spinbutton', { name: 'Hours' }).fill(hours);
+  await group.getByRole('spinbutton', { name: 'Minutes' }).fill(minutes);
+  await page.keyboard.press('Tab');
 }
 
 test.beforeEach(async ({ page }) => {
@@ -344,6 +368,8 @@ test('creates a customer with the backend DTO shape expected by the API client',
 
   await expect(page).toHaveURL(/\/customers\/999$/);
   expect(customerPayload).toEqual({
+    firstName: 'Grace',
+    lastName: 'Hopper',
     fullName: 'Grace Hopper',
     email: 'grace@carcare.test',
     phone: '+38970222222',
@@ -370,7 +396,7 @@ test('searches customers and shows customer vehicles and service history', async
     if (url.pathname.endsWith('/vehicles')) {
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok([{ id: '201', customerId: '101', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123' }]))
+        body: JSON.stringify(ok([{ id: '201', customerId: '101', customerName: 'Ada Lovelace', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123', fuelType: 'Diesel', engine: '2.0 TDI' }]))
       });
       return;
     }
@@ -404,6 +430,7 @@ test('searches customers and shows customer vehicles and service history', async
   await page.getByRole('link', { name: 'Details' }).click();
   await expect(page.getByText('Customer vehicles')).toBeVisible();
   await expect(page.getByText('SK-1234-AA')).toBeVisible();
+  await expect(page.locator('a[href="/services/new?customerId=101&vehicleId=201"]')).toBeVisible();
   await expect(page.getByText('Service history')).toBeVisible();
   await expect(page.getByText('Oil and filters')).toBeVisible();
 
@@ -415,7 +442,7 @@ test('searches customers and shows customer vehicles and service history', async
 test('searches creates and updates vehicles with backend DTO mapping', async ({ page }) => {
   await signIn(page);
   const backendVehicles = [
-    { id: '201', customerId: '101', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123' }
+    { id: '201', customerId: '101', customerName: 'Ada Lovelace', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: '5B4LP57F1X3453221', fuelType: 'Diesel', engine: '2.0 TDI' }
   ];
   let searchUrl = '';
   let createPayload: Record<string, unknown> | undefined;
@@ -457,23 +484,42 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
   });
 
   await page.goto('/vehicles');
-  await page.locator('input[name="vin"]').fill('VIN123');
-  await page.locator('input[name="plateNumber"]').fill('SK-1234-AA');
-  await page.locator('input[name="owner"]').fill('Ada');
+  await page.locator('input[name="vehicleSearch"]').fill('SK-1234-AA');
   await page.getByRole('button', { name: 'Search' }).click();
 
   await expect(page.getByText('Volkswagen Golf').first()).toBeVisible();
-  expect(searchUrl).toContain('vin=VIN123');
-  expect(searchUrl).toContain('plateNumber=SK-1234-AA');
-  expect(searchUrl).toContain('owner=Ada');
+  await expect(page.getByText('5B4LP57F1X3453221').first()).toBeVisible();
+  await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
+  await expect(page.getByText('Diesel').first()).toBeVisible();
+  await expect(page.getByText('2.0 TDI').first()).toBeVisible();
+  await expect(page.locator('mark').filter({ hasText: 'SK-1234-AA' })).toBeVisible();
+  expect(searchUrl).toContain('q=SK-1234-AA');
+  expect(searchUrl).not.toContain('vin=');
+  expect(searchUrl).not.toContain('plateNumber=');
+  expect(searchUrl).not.toContain('owner=');
+  await page.getByLabel('Clear vehicle query').click();
+  await expect(page.locator('input[name="vehicleSearch"]')).toHaveValue('');
+  await page.getByRole('button', { name: 'Reset' }).click();
+  await expect(page.locator('input[name="vehicleSearch"]')).toHaveValue('');
+
+  await page.route('**/api/customers', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok([{ id: 101, firstName: 'Ada', lastName: 'Lovelace', fullName: 'Ada Lovelace', email: 'ada@carcare.test', phone: '+38970111111', address: 'Analytical Lane' }]))
+    });
+  });
 
   await page.goto('/vehicles/new');
-  await page.locator('input[name="customerId"]').fill('101');
+  await page.getByLabel('Customer').fill('Ada');
+  await page.getByRole('option', { name: /Ada Lovelace/ }).click();
+  await expect(page.getByLabel('Customer')).toHaveValue('Ada Lovelace');
   await page.locator('input[name="plate"]').fill('OH-2020-AA');
   await page.locator('input[name="make"]').fill('Toyota');
   await page.locator('input[name="model"]').fill('Corolla');
   await page.locator('input[name="year"]').fill('2022');
   await page.locator('input[name="vin"]').fill('VIN202');
+  await page.locator('input[name="fuelType"]').fill('Hybrid');
+  await page.locator('input[name="engine"]').fill('1.8');
   await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/vehicles\/202$/);
@@ -483,12 +529,16 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
     make: 'Toyota',
     model: 'Corolla',
     modelYear: 2022,
-    vin: 'VIN202'
+    vin: 'VIN202',
+    fuelType: 'Hybrid',
+    engine: '1.8'
   });
 
   await page.goto('/vehicles/202/edit');
   await page.locator('input[name="plate"]').fill('OH-7777-AA');
   await page.locator('input[name="year"]').fill('2023');
+  await page.locator('input[name="fuelType"]').fill('Petrol');
+  await page.locator('input[name="engine"]').fill('2.0');
   await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/vehicles\/202$/);
@@ -498,13 +548,26 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
     make: 'Toyota',
     model: 'Corolla',
     modelYear: 2023,
-    vin: 'VIN202'
+    vin: 'VIN202',
+    fuelType: 'Petrol',
+    engine: '2.0'
   });
+
+  await page.locator('a[href="/services/new?customerId=101&vehicleId=202"]').click();
+  await expect(page).toHaveURL(/\/services\/new\?customerId=101&vehicleId=202$/);
+  await expect(page.getByLabel('Customer')).toHaveValue('Ada Lovelace - +38970111111');
 });
 
 test('records services with parts labor and replaced parts', async ({ page }) => {
   await signIn(page);
   let servicePayload: Record<string, unknown> | undefined;
+
+  await page.route('**/api/customers/*/vehicles', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok([{ id: '201', customerId: '101', customerName: 'Ada Lovelace', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123', fuelType: 'Diesel', engine: '2.0 TDI' }]))
+    });
+  });
 
   await page.route('**/api/service-records', async (route) => {
     const request = route.request();
@@ -523,16 +586,20 @@ test('records services with parts labor and replaced parts', async ({ page }) =>
   });
 
   await page.goto('/services/new');
-  await page.locator('input[name="customerId"]').fill('101');
-  await page.locator('input[name="vehicleId"]').fill('201');
-  await page.locator('input[name="performedAt"]').fill('12.06.2026.');
-  await page.locator('input[name="serviceTime"]').fill('14:35:22');
+  await page.getByLabel('Customer').fill('Ada');
+  await page.getByRole('option', { name: /Ada Lovelace/ }).click();
+  await page.getByLabel('Vehicle').fill('SK-1234-AA');
+  await page.getByRole('option', { name: /SK-1234-AA - Volkswagen Golf/ }).click();
+  await fillDatePickerGroup(page, 'Date', '12.06.2026');
+  await fillTimePickerGroup(page, 'Time', '14:35');
   await page.locator('input[name="mileage"]').fill('123456');
   await page.locator('input[name="summary"]').fill('Part Replacement Service');
-  await page.locator('input[name="replacedParts"]').fill('Oil filter');
-  await page.locator('input[name="partsCost"]').fill('1500');
+  await page.getByRole('button', { name: 'Add part' }).click();
+  await page.locator('input[name="parts.0.name"]').fill('Oil filter');
+  await page.locator('input[name="parts.0.price"]').fill('1500');
   await page.locator('input[name="laborCost"]').fill('2000');
   await page.locator('textarea[name="notes"]').fill('Oil and filters');
+  await expect(page.getByText(/Parts total: 1[,.]500 den\./)).toBeVisible();
   await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/services$/);
@@ -544,10 +611,35 @@ test('records services with parts labor and replaced parts', async ({ page }) =>
     partsCost: 1500,
     laborCost: 2000,
     odometer: 123456,
-    replacedParts: 'Oil filter',
+    replacedParts: 'Oil filter (1,500 den.)',
     notes: 'Oil and filters'
   });
   expect(servicePayload).not.toHaveProperty('serviceTime');
+});
+
+test('opens service details from services and vehicle history', async ({ page }) => {
+  await signIn(page);
+
+  await page.route('**/api/vehicles/*/service-history', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok([{ id: '401', customerId: '101', vehicleId: '201', serviceDate: '2026-06-12', serviceType: 'Oil and filters', partsCost: 1500, laborCost: 2000, totalAmount: 3500, odometer: 123456, replacedParts: 'Oil filter' }]))
+    });
+  });
+
+  await page.goto('/services');
+  await page.getByRole('row', { name: /Oil and filters/ }).click();
+  await expect(page).toHaveURL(/\/services\/401$/);
+  await expect(page.getByRole('heading', { name: 'Oil and filters' })).toBeVisible();
+  await expect(page.getByText('Replaced parts')).toBeVisible();
+  await expect(page.getByText('Oil filter')).toBeVisible();
+  await expect(page.getByText('3,500 den.').first()).toBeVisible();
+
+  await page.goto('/vehicles/201');
+  await page.getByRole('row', { name: /Oil and filters/ }).click();
+  await expect(page).toHaveURL(/\/services\/401$/);
+  await expect(page.getByText('Oil and filters').first()).toBeVisible();
+  await expect(page.getByText('123,456 km')).toBeVisible();
 });
 
 test('shows available appointments and schedules without conflicts', async ({ page }) => {
@@ -580,13 +672,13 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   });
 
   await page.goto('/appointments');
-  await expect(page.getByLabel('Select available date')).toBeVisible();
-  await expect(page.getByLabel('Select start date')).toBeVisible();
-  await expect(page.getByLabel('Select start time')).toBeVisible();
-  await expect(page.getByLabel('Select end date')).toBeVisible();
-  await expect(page.getByLabel('Select end time')).toBeVisible();
-  await page.locator('input[name="slotDate"]').fill('20.06.2026.');
-  const availableSlot = page.locator('.MuiChip-root').filter({ hasText: '09:00:00' });
+  await expect(page.getByRole('group', { name: 'Available date' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Start date' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Start time' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'End date' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'End time' })).toBeVisible();
+  await fillDatePickerGroup(page, 'Available date', '20.06.2026');
+  const availableSlot = page.locator('.MuiChip-root').filter({ hasText: '09:00' });
   await expect(availableSlot).toBeVisible();
   expect(availableUrl).toContain('date=2026-06-20');
 
@@ -594,8 +686,10 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   await page.locator('input[name="customerId"]').fill('101');
   await page.locator('input[name="vehicleId"]').fill('201');
   await page.locator('input[name="title"]').fill('Minor Service');
-  await expect(page.locator('input[name="startsAt"]')).toHaveValue('20.06.2026. 09:00:00');
-  await expect(page.locator('input[name="endsAt"]')).toHaveValue('20.06.2026. 10:00:00');
+  await expect(page.locator('input[name="startsAtDate"]')).toHaveValue(/20\.06\.2026/);
+  await expect(page.locator('input[name="startsAtTime"]')).toHaveValue(/09:00/);
+  await expect(page.locator('input[name="endsAtDate"]')).toHaveValue(/20\.06\.2026/);
+  await expect(page.locator('input[name="endsAtTime"]')).toHaveValue(/10:00/);
   await page.locator('button[type="submit"]').click();
 
   expect(appointmentPayload).toMatchObject({

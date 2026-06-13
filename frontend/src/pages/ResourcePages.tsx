@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  Autocomplete,
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
+  IconButton,
+  InputAdornment,
   Paper,
   Stack,
   Table,
@@ -17,10 +21,12 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
+import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
+import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { customersApi, vehiclesApi } from '../api/modules';
@@ -46,7 +52,9 @@ const vehicleSchema = z.object({
   make: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
   year: z.coerce.number().min(1950),
-  vin: z.string().optional()
+  vin: z.string().optional(),
+  fuelType: z.string().optional(),
+  engine: z.string().optional()
 });
 
 type CustomerForm = z.output<typeof customerSchema>;
@@ -207,11 +215,11 @@ function VehiclePage({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const [filters, setFilters] = useState({ vin: '', plateNumber: '', owner: '' });
-  const [submittedFilters, setSubmittedFilters] = useState(filters);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
   const listQuery = useQuery({
-    queryKey: ['vehicles', submittedFilters],
-    queryFn: () => vehiclesApi.list(cleanVehicleFilters(submittedFilters)),
+    queryKey: ['vehicles', submittedSearchTerm],
+    queryFn: () => vehiclesApi.list(cleanVehicleSearch(submittedSearchTerm)),
     enabled: mode === 'list'
   });
   const detailQuery = useQuery({
@@ -224,9 +232,14 @@ function VehiclePage({ mode }: { mode: Mode }) {
     queryFn: () => vehiclesApi.serviceHistory(id!),
     enabled: Boolean(id) && mode === 'detail'
   });
+  const customersQuery = useQuery({
+    queryKey: ['customers', 'vehicle-picker'],
+    queryFn: () => customersApi.list(),
+    enabled: mode !== 'list'
+  });
   const { control, handleSubmit, reset, formState } = useForm<VehicleForm>({
     resolver: zodResolver(vehicleSchema) as never,
-    defaultValues: { customerId: '', plate: '', make: '', model: '', year: new Date().getFullYear(), vin: '' }
+    defaultValues: { customerId: '', plate: '', make: '', model: '', year: new Date().getFullYear(), vin: '', fuelType: '', engine: '' }
   });
   const createMutation = useMutation({ mutationFn: vehiclesApi.create });
   const updateMutation = useMutation({ mutationFn: (values: VehicleForm) => vehiclesApi.update(id!, values) });
@@ -239,6 +252,10 @@ function VehiclePage({ mode }: { mode: Mode }) {
 
   if (mode === 'list') {
     if (listQuery.isLoading) return <LoadingState />;
+    const resetSearch = () => {
+      setSearchTerm('');
+      setSubmittedSearchTerm('');
+    };
     return (
       <ResourceFrame title={t('vehicles')} actionLabel={t('create')} actionTo="/vehicles/new">
         <Paper sx={{ p: 2 }}>
@@ -248,36 +265,35 @@ function VehiclePage({ mode }: { mode: Mode }) {
             component="form"
             onSubmit={(event) => {
               event.preventDefault();
-              setSubmittedFilters(filters);
+              setSubmittedSearchTerm(searchTerm);
             }}
           >
             <TextField
-              name="vin"
-              label="VIN"
-              value={filters.vin}
-              onChange={(event) => setFilters((current) => ({ ...current, vin: event.target.value }))}
-              fullWidth
-            />
-            <TextField
-              name="plateNumber"
-              label="License plate"
-              value={filters.plateNumber}
-              onChange={(event) => setFilters((current) => ({ ...current, plateNumber: event.target.value }))}
-              fullWidth
-            />
-            <TextField
-              name="owner"
-              label="Owner"
-              value={filters.owner}
-              onChange={(event) => setFilters((current) => ({ ...current, owner: event.target.value }))}
+              name="vehicleSearch"
+              label="Search"
+              placeholder="Search by license plate, VIN, or owner..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              InputProps={{
+                endAdornment: searchTerm ? (
+                  <InputAdornment position="end">
+                    <IconButton aria-label="Clear vehicle query" edge="end" onClick={() => setSearchTerm('')}>
+                      <ClearRoundedIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null
+              }}
               fullWidth
             />
             <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
               Search
             </Button>
+            <Button type="button" variant="text" startIcon={<RestartAltRoundedIcon />} onClick={resetSearch} sx={{ minWidth: 120 }}>
+              Reset
+            </Button>
           </Stack>
         </Paper>
-        <VehicleTable vehicles={listQuery.data ?? []} />
+        <VehicleTable vehicles={listQuery.data ?? []} searchTerm={submittedSearchTerm} />
       </ResourceFrame>
     );
   }
@@ -288,12 +304,19 @@ function VehiclePage({ mode }: { mode: Mode }) {
     return (
       <ResourceFrame title={`${detailQuery.data.make} ${detailQuery.data.model}`} actionLabel={t('edit')} actionTo={`/vehicles/${id}/edit`}>
         <Stack spacing={3}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end">
+            <Button component={RouterLink} to={`/services/new?customerId=${detailQuery.data.customerId}&vehicleId=${detailQuery.data.id}`} variant="contained">
+              {t('newService')}
+            </Button>
+          </Stack>
           <DetailCard
             rows={[
               ['License plate', detailQuery.data.plate],
+              ['Owner', detailQuery.data.customerName ?? detailQuery.data.customerId],
               ['Year', String(detailQuery.data.year)],
-              ['Customer ID', detailQuery.data.customerId],
-              ['VIN', detailQuery.data.vin ?? '-']
+              ['VIN', detailQuery.data.vin ?? '-'],
+              ['Fuel type', detailQuery.data.fuelType ?? '-'],
+              ['Engine', detailQuery.data.engine ?? '-']
             ]}
           />
           <ServiceHistory records={historyQuery.data ?? []} loading={historyQuery.isLoading} />
@@ -313,12 +336,48 @@ function VehiclePage({ mode }: { mode: Mode }) {
     <ResourceFrame title={mode === 'create' ? `${t('create')} ${t('vehicles')}` : `${t('edit')} ${detailQuery.data?.plate ?? ''}`}>
       <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
-          <FormTextField control={control} name="customerId" label="Customer ID" />
+          <Controller
+            control={control}
+            name="customerId"
+            render={({ field, fieldState }) => {
+              const customers = customersQuery.data ?? [];
+              const selectedCustomer = customers.find((customer) => String(customer.id) === field.value) ?? null;
+              return (
+                <Autocomplete
+                  options={customers}
+                  value={selectedCustomer}
+                  loading={customersQuery.isLoading}
+                  onChange={(_, value) => field.onChange(value ? String(value.id) : '')}
+                  getOptionLabel={(customer) => customer.name}
+                  isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Customer"
+                      error={Boolean(fieldState.error)}
+                      helperText={fieldState.error?.message}
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {customersQuery.isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        )
+                      }}
+                    />
+                  )}
+                />
+              );
+            }}
+          />
           <FormTextField control={control} name="plate" label="License plate" />
           <FormTextField control={control} name="make" label="Brand" />
           <FormTextField control={control} name="model" label="Model" />
           <FormTextField control={control} name="year" label="Year" type="number" />
           <FormTextField control={control} name="vin" label="VIN" />
+          <FormTextField control={control} name="fuelType" label="Fuel type" />
+          <FormTextField control={control} name="engine" label="Engine" />
         </Box>
         <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
           {t('save')}
@@ -378,7 +437,7 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
   );
 }
 
-function VehicleTable({ vehicles }: { vehicles: Vehicle[] }) {
+function VehicleTable({ vehicles, searchTerm }: { vehicles: Vehicle[]; searchTerm: string }) {
   if (!vehicles.length) return <EmptyState />;
   return (
     <Paper sx={{ overflow: 'auto' }}>
@@ -386,19 +445,33 @@ function VehicleTable({ vehicles }: { vehicles: Vehicle[] }) {
         <TableHead>
           <TableRow>
             <TableCell>License plate</TableCell>
+            <TableCell>VIN</TableCell>
+            <TableCell>Owner</TableCell>
             <TableCell>Vehicle</TableCell>
             <TableCell>Year</TableCell>
+            <TableCell>Fuel</TableCell>
+            <TableCell>Engine</TableCell>
             <TableCell align="right">Action</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {vehicles.map((vehicle) => (
             <TableRow key={vehicle.id} hover>
-              <TableCell>{vehicle.plate}</TableCell>
+              <TableCell><HighlightedText value={vehicle.plate} query={searchTerm} /></TableCell>
+              <TableCell>
+                <Tooltip title={vehicle.vin ?? '-'}>
+                  <Box component="span">
+                    <HighlightedText value={vehicle.vin ?? '-'} query={searchTerm} />
+                  </Box>
+                </Tooltip>
+              </TableCell>
+              <TableCell><HighlightedText value={vehicle.customerName ?? vehicle.customerId} query={searchTerm} /></TableCell>
               <TableCell>
                 {vehicle.make} {vehicle.model}
               </TableCell>
               <TableCell>{vehicle.year}</TableCell>
+              <TableCell>{vehicle.fuelType ?? '-'}</TableCell>
+              <TableCell>{vehicle.engine ?? '-'}</TableCell>
               <TableCell align="right">
                 <Button component={RouterLink} to={`/vehicles/${vehicle.id}`}>
                   Details
@@ -409,6 +482,29 @@ function VehicleTable({ vehicles }: { vehicles: Vehicle[] }) {
         </TableBody>
       </Table>
     </Paper>
+  );
+}
+
+function HighlightedText({ value, query }: { value: string; query: string }) {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery || !value) {
+    return <>{value || '-'}</>;
+  }
+  const matchIndex = value.toLocaleLowerCase().indexOf(trimmedQuery.toLocaleLowerCase());
+  if (matchIndex < 0) {
+    return <>{value}</>;
+  }
+  const before = value.slice(0, matchIndex);
+  const match = value.slice(matchIndex, matchIndex + trimmedQuery.length);
+  const after = value.slice(matchIndex + trimmedQuery.length);
+  return (
+    <>
+      {before}
+      <Box component="mark" sx={{ bgcolor: 'secondary.light', color: 'text.primary', px: 0.35, borderRadius: 0.5 }}>
+        {match}
+      </Box>
+      {after}
+    </>
   );
 }
 
@@ -427,6 +523,9 @@ function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: 
               <TableCell>License plate</TableCell>
               <TableCell>Vehicle</TableCell>
               <TableCell>Year</TableCell>
+              <TableCell>Fuel</TableCell>
+              <TableCell>Engine</TableCell>
+              <TableCell align="right">Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -437,6 +536,13 @@ function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: 
                   {vehicle.make} {vehicle.model}
                 </TableCell>
                 <TableCell>{vehicle.year}</TableCell>
+                <TableCell>{vehicle.fuelType ?? '-'}</TableCell>
+                <TableCell>{vehicle.engine ?? '-'}</TableCell>
+                <TableCell align="right">
+                  <Button component={RouterLink} to={`/services/new?customerId=${vehicle.customerId}&vehicleId=${vehicle.id}`}>
+                    New service
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -468,11 +574,11 @@ function ServiceHistory({ records, loading }: { records: ServiceRecord[]; loadin
           </TableHead>
           <TableBody>
             {records.map((record) => (
-              <TableRow key={record.id}>
+              <TableRow key={record.id} hover component={RouterLink} to={`/services/${record.id}`} sx={{ cursor: 'pointer' }}>
                 <TableCell>{record.performedAt}</TableCell>
                 <TableCell>{record.summary}</TableCell>
-                <TableCell>{record.mileage}</TableCell>
-                <TableCell align="right">{record.cost}</TableCell>
+                <TableCell>{record.mileage.toLocaleString('mk-MK')} km</TableCell>
+                <TableCell align="right">{record.cost.toLocaleString('mk-MK')} den.</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -513,10 +619,8 @@ function cleanFilters(filters: { firstName: string; lastName: string }) {
   };
 }
 
-function cleanVehicleFilters(filters: { vin: string; plateNumber: string; owner: string }) {
+function cleanVehicleSearch(query: string) {
   return {
-    vin: filters.vin.trim() || undefined,
-    plateNumber: filters.plateNumber.trim() || undefined,
-    owner: filters.owner.trim() || undefined
+    q: query.trim() || undefined
   };
 }

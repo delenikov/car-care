@@ -32,6 +32,12 @@ public class Vehicle extends BaseEntity {
   @Column(length = 80)
   private String vin;
 
+  @Column(length = 80)
+  private String fuelType;
+
+  @Column(length = 120)
+  private String engine;
+
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "customer_id", nullable = false)
   private Customer customer;

@@ -48,14 +48,14 @@ export const skopjeDate = (value: Date | string) => {
 
 export const skopjeTime = (value: Date | string) => {
   const parts = partsFor(value);
-  return `${parts.hour}:${parts.minute}:${parts.second}`;
+  return `${parts.hour}:${parts.minute}`;
 };
 
 export const skopjeDateTimeInput = (value: Date | string) => `${skopjeDate(value)}T${skopjeTime(value)}`;
 
 export const skopjeDisplayDate = (value: Date | string) => {
   const parts = partsFor(value);
-  return `${parts.day}.${parts.month}.${parts.year}.`;
+  return `${parts.day}.${parts.month}.${parts.year}`;
 };
 
 export const skopjeDisplayDateTime = (value: Date | string) => `${skopjeDisplayDate(value)} ${skopjeTime(value)}`;
@@ -66,8 +66,8 @@ export const parseSkopjeDisplayDate = (value: string) => {
 };
 
 export const parseSkopjeDisplayDateTime = (value: string) => {
-  const match = value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})\.?\s+(\d{2}):(\d{2}):(\d{2})$/);
-  return match ? `${match[3]}-${match[2]}-${match[1]}T${match[4]}:${match[5]}:${match[6]}` : null;
+  const match = value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})\.?\s+(\d{2}):(\d{2})(?::\d{2})?$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}T${match[4]}:${match[5]}` : null;
 };
 
 export const skopjeOffsetDateTime = (value: Date | string): string => {

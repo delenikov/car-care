@@ -19,7 +19,10 @@ public class VehicleService {
   }
 
   @Transactional(readOnly = true)
-  public List<VehicleResponse> search(String vin, String plateNumber, String owner) {
+  public List<VehicleResponse> search(String query, String vin, String plateNumber, String owner) {
+    if (hasText(query)) {
+      return vehicles.findBySearchTerm(query.trim()).stream().map(this::toResponse).toList();
+    }
     if (hasText(vin)) {
       return vehicles.findByVinContainingIgnoreCaseAndCustomerDeletedFalse(vin.trim()).stream().map(this::toResponse).toList();
     }
@@ -65,7 +68,17 @@ public class VehicleService {
   }
 
   public VehicleResponse toResponse(Vehicle vehicle) {
-    return new VehicleResponse(vehicle.getId(), vehicle.getCustomer().getId(), vehicle.getPlateNumber(), vehicle.getMake(), vehicle.getModel(), vehicle.getModelYear(), vehicle.getVin());
+    return new VehicleResponse(
+        vehicle.getId(),
+        vehicle.getCustomer().getId(),
+        vehicle.getCustomer().getFullName(),
+        vehicle.getPlateNumber(),
+        vehicle.getMake(),
+        vehicle.getModel(),
+        vehicle.getModelYear(),
+        vehicle.getVin(),
+        vehicle.getFuelType(),
+        vehicle.getEngine());
   }
 
   private void apply(Vehicle vehicle, Customer customer, VehicleRequest request) {
@@ -75,6 +88,8 @@ public class VehicleService {
     vehicle.setModel(request.model());
     vehicle.setModelYear(request.modelYear());
     vehicle.setVin(request.vin());
+    vehicle.setFuelType(request.fuelType());
+    vehicle.setEngine(request.engine());
   }
 
   private boolean hasText(String value) {

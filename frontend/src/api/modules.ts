@@ -39,7 +39,7 @@ export const dashboardApi = {
 };
 
 interface BackendCustomer {
-  id: string;
+  id: string | number;
   firstName?: string;
   lastName?: string;
   fullName: string;
@@ -49,13 +49,16 @@ interface BackendCustomer {
 }
 
 interface BackendVehicle {
-  id: string;
-  customerId: string;
+  id: string | number;
+  customerId: string | number;
+  customerName?: string;
   plateNumber: string;
   make: string;
   model: string;
   modelYear: number;
   vin?: string;
+  fuelType?: string;
+  engine?: string;
 }
 
 interface BackendServiceRecord {
@@ -107,7 +110,7 @@ interface BackendDocument {
 }
 
 const toCustomer = (customer: BackendCustomer): Customer => ({
-  id: customer.id,
+  id: String(customer.id),
   name: customer.fullName,
   email: customer.email,
   phone: customer.phone ?? '',
@@ -115,21 +118,34 @@ const toCustomer = (customer: BackendCustomer): Customer => ({
   notes: customer.address ?? ''
 });
 
+const splitCustomerName = (name: string) => {
+  const fullName = name.trim();
+  const [firstName, ...rest] = fullName.split(/\s+/);
+  return {
+    firstName: firstName ?? fullName,
+    lastName: rest.length ? rest.join(' ') : firstName ?? fullName,
+    fullName
+  };
+};
+
 const toCustomerRequest = (customer: Omit<Customer, 'id'>) => ({
-  fullName: customer.name,
+  ...splitCustomerName(customer.name),
   email: customer.email,
   phone: customer.phone,
   address: customer.notes
 });
 
 const toVehicle = (vehicle: BackendVehicle): Vehicle => ({
-  id: vehicle.id,
-  customerId: vehicle.customerId,
+  id: String(vehicle.id),
+  customerId: String(vehicle.customerId),
+  customerName: vehicle.customerName,
   plate: vehicle.plateNumber,
   make: vehicle.make,
   model: vehicle.model,
   year: vehicle.modelYear,
-  vin: vehicle.vin
+  vin: vehicle.vin,
+  fuelType: vehicle.fuelType,
+  engine: vehicle.engine
 });
 
 const toVehicleRequest = (vehicle: Omit<Vehicle, 'id'>) => ({
@@ -138,7 +154,9 @@ const toVehicleRequest = (vehicle: Omit<Vehicle, 'id'>) => ({
   make: vehicle.make,
   model: vehicle.model,
   modelYear: vehicle.year,
-  vin: vehicle.vin
+  vin: vehicle.vin,
+  fuelType: vehicle.fuelType,
+  engine: vehicle.engine
 });
 
 const toServiceRecord = (record: BackendServiceRecord): ServiceRecord => ({
@@ -228,11 +246,11 @@ export const customersApi = {
   serviceHistory: (id: string) => unwrap(http.get<BackendServiceRecord[]>(`/api/customers/${id}/service-history`)).then((records) => records.map(toServiceRecord))
 };
 export const vehiclesApi = {
-  list: (filters?: { vin?: string; plateNumber?: string; owner?: string }) => unwrap(http.get<BackendVehicle[]>('/api/vehicles', { params: filters })).then((vehicles) => vehicles.map(toVehicle)),
+  list: (filters?: { q?: string; vin?: string; plateNumber?: string; owner?: string }) => unwrap(http.get<BackendVehicle[]>('/api/vehicles', { params: filters })).then((vehicles) => vehicles.map(toVehicle)),
   get: (id: string) => unwrap(http.get<BackendVehicle>(`/api/vehicles/${id}`)).then(toVehicle),
   create: (payload: Omit<Vehicle, 'id'>) => unwrap(http.post<BackendVehicle>('/api/vehicles', toVehicleRequest(payload))).then(toVehicle),
   update: (id: string, payload: Partial<Omit<Vehicle, 'id'>>) =>
-    unwrap(http.put<BackendVehicle>(`/api/vehicles/${id}`, toVehicleRequest({ customerId: '', plate: '', make: '', model: '', year: new Date().getFullYear(), ...payload }))).then(toVehicle),
+    unwrap(http.put<BackendVehicle>(`/api/vehicles/${id}`, toVehicleRequest({ customerId: '', plate: '', make: '', model: '', year: new Date().getFullYear(), fuelType: '', engine: '', ...payload }))).then(toVehicle),
   remove: (id: string) => unwrap(http.delete<void>(`/api/vehicles/${id}`)),
   serviceHistory: (id: string) => unwrap(http.get<BackendServiceRecord[]>(`/api/vehicles/${id}/service-history`)).then((records) => records.map(toServiceRecord))
 };

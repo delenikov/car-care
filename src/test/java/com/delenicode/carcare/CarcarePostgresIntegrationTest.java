@@ -193,6 +193,13 @@ class CarcarePostgresIntegrationTest {
     assertThat(serviceRecord.get("totalAmount").decimalValue()).isEqualByComparingTo("3500.00");
     assertThat(serviceRecord.get("replacedParts").asText()).isEqualTo("Oil filter");
 
+    JsonNode serviceRecordDetail = get("/api/service-records/" + serviceRecordId, admin, 200).get("data");
+    assertThat(serviceRecordDetail.get("id").asLong()).isEqualTo(serviceRecordId);
+    assertThat(serviceRecordDetail.get("customerId").asLong()).isEqualTo(customerId);
+    assertThat(serviceRecordDetail.get("vehicleId").asLong()).isEqualTo(vehicleId);
+    assertThat(serviceRecordDetail.get("partsCost").decimalValue()).isEqualByComparingTo("1500.00");
+    assertThat(serviceRecordDetail.get("laborCost").decimalValue()).isEqualByComparingTo("2000.00");
+
     JsonNode customerVehicles = get("/api/customers/" + customerId + "/vehicles", admin, 200).get("data");
     assertArrayContainsId(customerVehicles, vehicleId);
 

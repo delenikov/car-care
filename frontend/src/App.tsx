@@ -70,6 +70,7 @@ const router = createBrowserRouter([
       { path: 'appointments', element: <AppointmentsPage /> },
       { path: 'services', element: <ServicesPage /> },
       { path: 'services/new', element: <ServicesPage mode="create" /> },
+      { path: 'services/:id', element: <ServicesPage mode="detail" /> },
       { path: 'offers', element: <OffersPage /> },
       { path: 'offers/new', element: <OffersPage mode="create" /> },
       { path: 'offers/:id', element: <OffersPage mode="detail" /> },

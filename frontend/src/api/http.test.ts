@@ -16,6 +16,11 @@ const unauthorized = (config: InternalAxiosRequestConfig) => Promise.reject({
   response: { status: 401, data: { message: 'Unauthorized' }, headers: {}, config }
 });
 
+const jwtWithExpiration = (expiresAtSeconds: number) => {
+  const encode = (value: unknown) => btoa(JSON.stringify(value)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return `${encode({ alg: 'HS512' })}.${encode({ sub: 'admin@carcare.local', exp: expiresAtSeconds })}.signature`;
+};
+
 describe('HTTP token refresh', () => {
   const originalAdapter = http.defaults.adapter;
 
@@ -64,5 +69,37 @@ describe('HTTP token refresh', () => {
     expect(second.data).toMatchObject({ authorization: 'Bearer new-access-token' });
     expect(tokenStorage.get()).toBe('new-access-token');
     expect(refreshTokenStorage.get()).toBe('new-refresh-token');
+  });
+
+  it('refreshes an expired access token before sending a protected request', async () => {
+    tokenStorage.set(jwtWithExpiration(Math.floor(Date.now() / 1000) - 60));
+    refreshTokenStorage.set('valid-refresh-token');
+    vi.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        success: true,
+        message: 'Token refreshed',
+        data: {
+          accessToken: 'fresh-access-token',
+          refreshToken: 'fresh-refresh-token',
+          user: {
+            id: '1',
+            email: 'admin@carcare.local',
+            fullName: 'Admin User',
+            enabled: true,
+            failedLoginAttempts: 0,
+            roles: ['ROLE_ADMIN']
+          }
+        }
+      }
+    });
+    const adapter = vi.fn<AxiosAdapter>(async (config) => ok(config, { authorization: config.headers?.Authorization }));
+    http.defaults.adapter = adapter;
+
+    const response = await http.get('/api/customers');
+
+    expect(response.data).toMatchObject({ authorization: 'Bearer fresh-access-token' });
+    expect(adapter).toHaveBeenCalledTimes(1);
+    expect(tokenStorage.get()).toBe('fresh-access-token');
+    expect(refreshTokenStorage.get()).toBe('fresh-refresh-token');
   });
 });

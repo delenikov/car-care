@@ -13,7 +13,7 @@ export const resources = {
       customers: 'Клиенти',
       vehicles: 'Возила',
       appointments: 'Термини',
-      services: 'Сервисна историја',
+      services: 'Сервиси',
       offers: 'Понуди',
       documents: 'Документи',
       admin: 'Администрација',

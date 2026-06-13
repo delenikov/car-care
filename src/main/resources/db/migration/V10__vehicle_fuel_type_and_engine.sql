@@ -1,0 +1,3 @@
+ALTER TABLE vehicles
+  ADD COLUMN fuel_type VARCHAR(80),
+  ADD COLUMN engine VARCHAR(120);

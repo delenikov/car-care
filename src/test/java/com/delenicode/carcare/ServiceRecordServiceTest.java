@@ -142,6 +142,37 @@ class ServiceRecordServiceTest {
     assertThat(serviceRecordService.findByVehicleId(20L)).extracting("serviceType").containsExactly("Major Service");
   }
 
+  @Test
+  void findByIdReturnsFullServiceRecordDetails() {
+    Customer customer = customer(10L);
+    ServiceRecord record = serviceRecord(30L, customer, vehicle(20L, customer));
+    when(serviceRecords.findById(30L)).thenReturn(Optional.of(record));
+
+    var response = serviceRecordService.findById(30L);
+
+    assertThat(response.customerId()).isEqualTo(10L);
+    assertThat(response.vehicleId()).isEqualTo(20L);
+    assertThat(response.serviceDate()).isEqualTo(LocalDate.of(2026, 6, 12));
+    assertThat(response.serviceType()).isEqualTo("Major Service");
+    assertThat(response.partsCost()).isEqualByComparingTo("1200.00");
+    assertThat(response.laborCost()).isEqualByComparingTo("800.00");
+    assertThat(response.totalAmount()).isEqualByComparingTo("2000.00");
+    assertThat(response.odometer()).isEqualTo(123456);
+    assertThat(response.replacedParts()).isEqualTo("Air filter");
+    assertThat(response.notes()).isEqualTo("Full detail");
+  }
+
+  @Test
+  void findByIdRejectsDeletedCustomerRecord() {
+    Customer customer = customer(10L);
+    customer.setDeleted(true);
+    when(serviceRecords.findById(30L)).thenReturn(Optional.of(serviceRecord(30L, customer, vehicle(20L, customer))));
+
+    assertThatThrownBy(() -> serviceRecordService.findById(30L))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Service record not found");
+  }
+
   private Customer customer(Long id) {
     Customer customer = new Customer();
     customer.setId(id);
@@ -161,5 +192,21 @@ class ServiceRecordServiceTest {
     vehicle.setModel("Golf");
     vehicle.setModelYear(2020);
     return vehicle;
+  }
+
+  private ServiceRecord serviceRecord(Long id, Customer customer, Vehicle vehicle) {
+    ServiceRecord record = new ServiceRecord();
+    record.setId(id);
+    record.setCustomer(customer);
+    record.setVehicle(vehicle);
+    record.setServiceDate(LocalDate.of(2026, 6, 12));
+    record.setServiceType("Major Service");
+    record.setPartsCost(new BigDecimal("1200.00"));
+    record.setLaborCost(new BigDecimal("800.00"));
+    record.setTotalAmount(new BigDecimal("2000.00"));
+    record.setOdometer(123456);
+    record.setReplacedParts("Air filter");
+    record.setNotes("Full detail");
+    return record;
   }
 }

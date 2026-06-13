@@ -96,15 +96,15 @@ describe('ASMS frontend baseline', () => {
     await waitFor(() => expect(adminView.container.querySelector('a[href="/admin"]')).toBeInTheDocument());
   });
 
-  it('formats Skopje date and time with seconds and offset', () => {
+  it('formats Skopje date and time with minute precision and offset', () => {
     const date = '2026-06-13T12:35:22Z';
 
     expect(skopjeDate(date)).toBe('2026-06-13');
-    expect(skopjeTime(date)).toBe('14:35:22');
-    expect(skopjeDisplayDate(date)).toBe('13.06.2026.');
-    expect(skopjeDisplayDateTime(date)).toBe('13.06.2026. 14:35:22');
-    expect(parseSkopjeDisplayDate('13.06.2026.')).toBe('2026-06-13');
-    expect(parseSkopjeDisplayDateTime('13.06.2026. 14:35:22')).toBe('2026-06-13T14:35:22');
+    expect(skopjeTime(date)).toBe('14:35');
+    expect(skopjeDisplayDate(date)).toBe('13.06.2026');
+    expect(skopjeDisplayDateTime(date)).toBe('13.06.2026 14:35');
+    expect(parseSkopjeDisplayDate('13.06.2026')).toBe('2026-06-13');
+    expect(parseSkopjeDisplayDateTime('13.06.2026 14:35')).toBe('2026-06-13T14:35');
     expect(skopjeOffsetDateTime('2026-06-13T14:35:22')).toBe('2026-06-13T14:35:22+02:00');
   });
 });

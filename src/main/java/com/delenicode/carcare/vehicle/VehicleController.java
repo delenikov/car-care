@@ -23,8 +23,12 @@ public class VehicleController {
   private final ServiceRecordService serviceRecords;
 
   @GetMapping
-  ApiResponse<List<VehicleResponse>> all(@RequestParam(required = false) String vin, @RequestParam(required = false) String plateNumber, @RequestParam(required = false) String owner) {
-    return ApiResponse.ok("Vehicles loaded", vehicles.search(vin, plateNumber, owner));
+  ApiResponse<List<VehicleResponse>> all(
+      @RequestParam(required = false) String q,
+      @RequestParam(required = false) String vin,
+      @RequestParam(required = false) String plateNumber,
+      @RequestParam(required = false) String owner) {
+    return ApiResponse.ok("Vehicles loaded", vehicles.search(q, vin, plateNumber, owner));
   }
 
   @GetMapping("/{id}")

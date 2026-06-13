@@ -18,6 +18,25 @@ const isApiResponse = <T>(value: T | ApiResponse<T>): value is ApiResponse<T> =>
   return Boolean(value && typeof value === 'object' && 'success' in value && 'message' in value && 'data' in value);
 };
 
+const authEndpointsWithoutAccessToken = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'];
+const accessTokenRefreshSkewSeconds = 30;
+
+const shouldSendAccessToken = (url = '') => {
+  return !authEndpointsWithoutAccessToken.some((endpoint) => url.includes(endpoint));
+};
+
+const accessTokenExpiresSoon = (token: string) => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) as { exp?: number };
+    if (!payload.exp) {
+      return true;
+    }
+    return payload.exp * 1000 <= Date.now() + accessTokenRefreshSkewSeconds * 1000;
+  } catch {
+    return true;
+  }
+};
+
 export const tokenStorage = {
   get: () => sessionStorage.getItem(accessTokenKey),
   set: (token: string) => sessionStorage.setItem(accessTokenKey, token),
@@ -60,10 +79,28 @@ export const refreshAccessToken = () => {
   return refreshRequest;
 };
 
-http.interceptors.request.use((config) => {
-  const token = tokenStorage.get();
+http.interceptors.request.use(async (config) => {
+  const url = config.url ?? '';
+  if (!shouldSendAccessToken(url)) {
+    delete config.headers.Authorization;
+    return config;
+  }
+
+  let token = tokenStorage.get();
+  if (token && accessTokenExpiresSoon(token)) {
+    try {
+      token = (await refreshAccessToken()).accessToken;
+    } catch {
+      tokenStorage.clear();
+      refreshTokenStorage.clear();
+      token = null;
+    }
+  }
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    delete config.headers.Authorization;
   }
   return config;
 });

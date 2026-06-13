@@ -45,14 +45,17 @@ class VehicleServiceTest {
       return vehicle;
     });
 
-    var response = vehicleService.create(new VehicleRequest(10L, "SK-1234-AA", "Volkswagen", "Golf", 2020, "VIN123"));
+    var response = vehicleService.create(new VehicleRequest(10L, "SK-1234-AA", "Volkswagen", "Golf", 2020, "VIN123", "Diesel", "2.0 TDI"));
 
     assertThat(response.customerId()).isEqualTo(10L);
+    assertThat(response.customerName()).isEqualTo("Ada Lovelace");
     assertThat(response.plateNumber()).isEqualTo("SK-1234-AA");
     assertThat(response.make()).isEqualTo("Volkswagen");
     assertThat(response.model()).isEqualTo("Golf");
     assertThat(response.modelYear()).isEqualTo(2020);
     assertThat(response.vin()).isEqualTo("VIN123");
+    assertThat(response.fuelType()).isEqualTo("Diesel");
+    assertThat(response.engine()).isEqualTo("2.0 TDI");
   }
 
   @Test
@@ -65,11 +68,13 @@ class VehicleServiceTest {
     when(customers.findByIdAndDeletedFalse(11L)).thenReturn(Optional.of(newCustomer));
     when(vehicles.save(vehicle)).thenReturn(vehicle);
 
-    var response = vehicleService.update(20L, new VehicleRequest(11L, "SK-7777-AA", "Toyota", "Corolla", 2022, "VIN777"));
+    var response = vehicleService.update(20L, new VehicleRequest(11L, "SK-7777-AA", "Toyota", "Corolla", 2022, "VIN777", "Hybrid", "1.8"));
 
     assertThat(response.customerId()).isEqualTo(11L);
     assertThat(response.plateNumber()).isEqualTo("SK-7777-AA");
     assertThat(response.vin()).isEqualTo("VIN777");
+    assertThat(response.fuelType()).isEqualTo("Hybrid");
+    assertThat(response.engine()).isEqualTo("1.8");
   }
 
   @Test
@@ -79,7 +84,7 @@ class VehicleServiceTest {
     when(vehicles.findById(20L)).thenReturn(Optional.of(vehicle));
     when(vehicles.existsByPlateNumberAndIdNot("SK-9999-AA", 20L)).thenReturn(true);
 
-    assertThatThrownBy(() -> vehicleService.update(20L, new VehicleRequest(10L, "SK-9999-AA", "Toyota", "Corolla", 2022, "VIN999")))
+    assertThatThrownBy(() -> vehicleService.update(20L, new VehicleRequest(10L, "SK-9999-AA", "Toyota", "Corolla", 2022, "VIN999", "Petrol", "1.6")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Vehicle plate already exists");
   }
@@ -88,13 +93,15 @@ class VehicleServiceTest {
   void searchRoutesToVinPlateOrOwnerQueries() {
     Customer customer = customer(10L, "Ada Lovelace");
     Vehicle vehicle = vehicle(20L, customer, "SK-1234-AA", "VIN123");
+    when(vehicles.findBySearchTerm("Ada")).thenReturn(List.of(vehicle));
     when(vehicles.findByVinContainingIgnoreCaseAndCustomerDeletedFalse("VIN")).thenReturn(List.of(vehicle));
     when(vehicles.findByPlateNumberContainingIgnoreCaseAndCustomerDeletedFalse("SK")).thenReturn(List.of(vehicle));
     when(vehicles.findByOwnerName("Ada")).thenReturn(List.of(vehicle));
 
-    assertThat(vehicleService.search("VIN", null, null)).extracting("vin").containsExactly("VIN123");
-    assertThat(vehicleService.search(null, "SK", null)).extracting("plateNumber").containsExactly("SK-1234-AA");
-    assertThat(vehicleService.search(null, null, "Ada")).extracting("customerId").containsExactly(10L);
+    assertThat(vehicleService.search("Ada", null, null, null)).extracting("customerName").containsExactly("Ada Lovelace");
+    assertThat(vehicleService.search(null, "VIN", null, null)).extracting("vin").containsExactly("VIN123");
+    assertThat(vehicleService.search(null, null, "SK", null)).extracting("plateNumber").containsExactly("SK-1234-AA");
+    assertThat(vehicleService.search(null, null, null, "Ada")).extracting("customerId").containsExactly(10L);
   }
 
   private Customer customer(Long id, String fullName) {
@@ -117,6 +124,8 @@ class VehicleServiceTest {
     vehicle.setModel("Golf");
     vehicle.setModelYear(2020);
     vehicle.setVin(vin);
+    vehicle.setFuelType("Diesel");
+    vehicle.setEngine("2.0 TDI");
     return vehicle;
   }
 }

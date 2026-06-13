@@ -25,6 +25,14 @@ public class ServiceRecordService {
   }
 
   @Transactional(readOnly = true)
+  public ServiceRecordResponse findById(Long id) {
+    return serviceRecords.findById(id)
+        .filter(record -> !record.getCustomer().isDeleted())
+        .map(this::toResponse)
+        .orElseThrow(() -> new IllegalArgumentException("Service record not found"));
+  }
+
+  @Transactional(readOnly = true)
   public List<ServiceRecordResponse> findByCustomerId(Long customerId) {
     return serviceRecords.findByCustomerIdAndCustomerDeletedFalse(customerId).stream().map(this::toResponse).toList();
   }
