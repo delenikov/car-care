@@ -55,7 +55,7 @@ export interface Appointment {
   title: string;
   startsAt: string;
   endsAt: string;
-  status: 'BOOKED' | 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   cancellationUrl?: string;
 }
 

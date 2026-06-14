@@ -53,6 +53,15 @@ export const skopjeTime = (value: Date | string) => {
 
 export const skopjeDateTimeInput = (value: Date | string) => `${skopjeDate(value)}T${skopjeTime(value)}`;
 
+export const fullCalendarSkopjeDateTimeInput = (value: Date) => {
+  const year = String(value.getUTCFullYear()).padStart(4, '0');
+  const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(value.getUTCDate()).padStart(2, '0');
+  const hour = String(value.getUTCHours()).padStart(2, '0');
+  const minute = String(value.getUTCMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+};
+
 export const skopjeDisplayDate = (value: Date | string) => {
   const parts = partsFor(value);
   return `${parts.day}.${parts.month}.${parts.year}`;
@@ -79,6 +88,14 @@ export const skopjeOffsetDateTime = (value: Date | string): string => {
   }
   const [datePart, timePart = '00:00:00'] = value.split('T');
   const normalizedTime = timePart.length === 5 ? `${timePart}:00` : timePart;
+  const utcGuess = new Date(`${datePart}T${normalizedTime}Z`);
+  return `${datePart}T${normalizedTime}${offsetFor(utcGuess)}`;
+};
+
+export const fullCalendarSkopjeOffsetDateTime = (value: Date): string => {
+  const localDateTime = fullCalendarSkopjeDateTimeInput(value);
+  const [datePart, timePart] = localDateTime.split('T');
+  const normalizedTime = `${timePart}:00`;
   const utcGuess = new Date(`${datePart}T${normalizedTime}Z`);
   return `${datePart}T${normalizedTime}${offsetFor(utcGuess)}`;
 };

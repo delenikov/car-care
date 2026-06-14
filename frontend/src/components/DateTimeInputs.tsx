@@ -1,5 +1,6 @@
 import dayjs, { type Dayjs } from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import 'dayjs/locale/mk';
 import { Box } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -9,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { skopjeDate, skopjeTime } from '../utils/dateTime';
 
 dayjs.extend(customParseFormat);
+dayjs.locale('mk');
 
 const dateHelperText = 'DD.MM.YYYY';
 const timeHelperText = 'HH:mm';
@@ -52,7 +54,7 @@ export function DateInput({
   value: string;
 }) {
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="mk">
       <DatePicker
         label={label}
         value={parseDate(value)}
@@ -87,7 +89,7 @@ export function TimeInput({
   value: string;
 }) {
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="mk">
       <TimePicker
         label={label}
         value={parseTime(value)}
@@ -130,7 +132,7 @@ export function DateTimeInput({
   const timeLabel = `${label} ${t('time').toLocaleLowerCase()}`;
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="mk">
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 0.8fr' }, gap: 2 }}>
         <DatePicker
           label={dateLabel}

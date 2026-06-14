@@ -181,6 +181,17 @@ class CarcarePostgresIntegrationTest {
     assertThat(cancelledAppointment.get("status").asText()).isEqualTo("CANCELLED");
     post("/api/appointments/cancel", null, Map.of("token", cancellationToken), 400);
 
+    OffsetDateTime deletedAppointmentStart = appointmentStart.plusHours(1);
+    long deletedAppointmentId = createAndReadId("/api/appointments", admin, Map.of(
+        "customerId", customerId,
+        "vehicleId", vehicleId,
+        "scheduledAt", deletedAppointmentStart.toString(),
+        "serviceType", "Delete appointment test",
+        "notes", "Delete booking"));
+    delete("/api/appointments/" + deletedAppointmentId, admin, 200);
+    JsonNode appointments = get("/api/appointments", admin, 200).get("data");
+    assertThat(appointments).allSatisfy(item -> assertThat(item.get("id").asLong()).isNotEqualTo(deletedAppointmentId));
+
     JsonNode serviceRecord = post("/api/service-records", admin, Map.of(
         "customerId", customerId,
         "vehicleId", vehicleId,

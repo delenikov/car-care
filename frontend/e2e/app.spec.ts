@@ -648,7 +648,12 @@ test('opens service details from services and vehicle history', async ({ page })
 test('shows available appointments and schedules without conflicts', async ({ page }) => {
   await signIn(page);
   let appointmentPayload: Record<string, unknown> | undefined;
+  let deletedAppointmentId = '';
   let availableUrl = '';
+  let appointmentRows = [
+    { id: 301, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-14T09:00:00.000Z', endsAt: '2026-06-14T10:00:00.000Z', serviceType: 'Oil change', status: 'SCHEDULED' },
+    { id: 304, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-14T11:00:00.000Z', endsAt: '2026-06-14T12:00:00.000Z', serviceType: 'Cancelled check', status: 'CANCELLED' }
+  ];
 
   await page.route('**/api/appointments/available**', async (route) => {
     availableUrl = route.request().url();
@@ -677,32 +682,74 @@ test('shows available appointments and schedules without conflicts', async ({ pa
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([
-        { id: '301', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-15T09:00:00.000Z', endsAt: '2026-06-15T10:00:00.000Z', serviceType: 'Oil change', status: 'SCHEDULED' },
-        { id: '304', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-15T11:00:00.000Z', endsAt: '2026-06-15T12:00:00.000Z', serviceType: 'Cancelled check', status: 'CANCELLED' }
-      ]))
+      body: JSON.stringify(ok(appointmentRows))
     });
+  });
+
+  await page.route('**/api/appointments/301', async (route) => {
+    if (route.request().method() === 'DELETE') {
+      deletedAppointmentId = '301';
+      appointmentRows = appointmentRows.filter((appointment) => String(appointment.id) !== '301');
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(ok(null, 'Appointment deleted')) });
+      return;
+    }
+    await route.fallback();
   });
 
   await page.goto('/appointments');
   await expect(page.getByText('Oil change').first()).toBeVisible();
   await expect(page.getByText('Cancelled check')).toHaveCount(0);
-  await expect(page.getByRole('group', { name: 'Достапен датум' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Почеток датум' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Почеток време' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Крај датум' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Крај време' })).toBeVisible();
-  await fillDatePickerGroup(page, 'Достапен датум', '20.06.2026');
+  await expect(page.getByRole('group', { name: 'Провери достапност за датум' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Напредно / сопствено време' })).toBeVisible();
+  await fillDatePickerGroup(page, 'Провери достапност за датум', '20.06.2026');
   const availableSlot = page.locator('.MuiChip-root').filter({ hasText: '08:00' });
   await expect(availableSlot).toBeVisible();
   expect(availableUrl).toContain('date=2026-06-20');
 
-  await availableSlot.click();
+  await page.locator('button[type="submit"]').click();
+  await expect(page.getByText('Полето е задолжително')).toHaveCount(2);
+  await expect(page.getByText(/Too small/i)).toHaveCount(0);
+  expect(appointmentPayload).toBeUndefined();
+
   await page.locator('input[name="customerId"]').fill('Ada');
   await page.getByRole('option', { name: 'Ada Lovelace', exact: true }).click();
   await page.locator('input[name="vehicleId"]').fill('SK-1234-AA');
   await page.getByRole('option', { name: /SK-1234-AA - Volkswagen Golf/ }).click();
   await page.locator('input[name="title"]').fill('Minor Service');
+  await page.getByRole('button', { name: 'Напредно / сопствено време' }).click();
+  await expect(page.getByRole('group', { name: 'Почеток датум' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Почеток време' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Крај датум' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Крај време' })).toBeVisible();
+
+  await fillDatePickerGroup(page, 'Почеток датум', '20.06.2026');
+  await fillTimePickerGroup(page, 'Почеток време', '17:00');
+  await fillDatePickerGroup(page, 'Крај датум', '20.06.2026');
+  await fillTimePickerGroup(page, 'Крај време', '18:00');
+  await page.locator('button[type="submit"]').click();
+  await expect(page.getByText('Терминот мора да биде во работно време од 08:00 до 16:00.').first()).toBeVisible();
+  expect(appointmentPayload).toBeUndefined();
+
+  await fillDatePickerGroup(page, 'Почеток датум', '14.06.2026');
+  await fillTimePickerGroup(page, 'Почеток време', '11:30');
+  await fillDatePickerGroup(page, 'Крај датум', '14.06.2026');
+  await fillTimePickerGroup(page, 'Крај време', '12:30');
+  await page.locator('button[type="submit"]').click();
+  await expect(page.getByText('Терминот се преклопува со постоечки термин.').first()).toBeVisible();
+  expect(appointmentPayload).toBeUndefined();
+
+  await page.getByText('Oil change').first().click();
+  const appointmentDialog = page.getByRole('dialog', { name: 'Oil change' });
+  await expect(appointmentDialog).toBeVisible();
+  await expect(appointmentDialog.getByText('Ada Lovelace')).toBeVisible();
+  await expect(appointmentDialog.getByText('SK-1234-AA - Volkswagen Golf')).toBeVisible();
+  await appointmentDialog.getByRole('button', { name: 'Избриши' }).click();
+  await expect(page.getByRole('dialog', { name: 'Избриши термин' })).toBeVisible();
+  await page.getByRole('dialog', { name: 'Избриши термин' }).getByRole('button', { name: 'Избриши' }).click();
+  await expect(page.getByText('Oil change')).toHaveCount(0);
+  expect(deletedAppointmentId).toBe('301');
+
+  await availableSlot.click();
   await expect(page.locator('input[name="startsAtDate"]')).toHaveValue(/20\.06\.2026/);
   await expect(page.locator('input[name="startsAtTime"]')).toHaveValue(/08:00/);
   await expect(page.locator('input[name="endsAtDate"]')).toHaveValue(/20\.06\.2026/);
@@ -716,6 +763,46 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   });
   expect(appointmentPayload?.startsAt).toBe('2026-06-20T08:00:00+02:00');
   expect(appointmentPayload?.endsAt).toBe('2026-06-20T09:00:00+02:00');
+});
+
+test('shows backend appointment conflict message when server rejects a save', async ({ page }) => {
+  await signIn(page);
+  let postCount = 0;
+
+  await page.route('**/api/appointments/available**', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok([{ startsAt: '2026-06-20T08:00:00.000+02:00', endsAt: '2026-06-20T09:00:00.000+02:00' }]))
+    });
+  });
+
+  await page.route('**/api/customers/*/vehicles', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok([{ id: '201', customerId: '101', customerName: 'Ada Lovelace', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123', fuelType: 'Diesel', engine: '2.0 TDI' }]))
+    });
+  });
+
+  await page.route('**/api/appointments', async (route) => {
+    if (route.request().method() === 'POST') {
+      postCount += 1;
+      await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify(fail('Appointment conflicts with an existing appointment')) });
+      return;
+    }
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(ok([])) });
+  });
+
+  await page.goto('/appointments');
+  await page.locator('.MuiChip-root').filter({ hasText: '08:00' }).click();
+  await page.locator('input[name="customerId"]').fill('Ada');
+  await page.getByRole('option', { name: 'Ada Lovelace', exact: true }).click();
+  await page.locator('input[name="vehicleId"]').fill('SK-1234-AA');
+  await page.getByRole('option', { name: /SK-1234-AA - Volkswagen Golf/ }).click();
+  await page.locator('input[name="title"]').fill('Minor Service');
+  await page.locator('button[type="submit"]').click();
+
+  await expect(page.getByRole('alert')).toContainText('Appointment conflicts with an existing appointment');
+  expect(postCount).toBe(1);
 });
 
 test('allows public customers to book an available appointment', async ({ page }) => {

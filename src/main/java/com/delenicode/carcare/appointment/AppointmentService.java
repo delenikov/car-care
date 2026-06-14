@@ -119,6 +119,12 @@ public class AppointmentService {
   }
 
   @Transactional
+  public void delete(Long id) {
+    Appointment appointment = appointments.findById(id).orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+    appointments.delete(appointment);
+  }
+
+  @Transactional
   public AppointmentResponse cancelByToken(String token) {
     Appointment appointment = appointments.findByCancellationToken(token).orElseThrow(() -> new IllegalArgumentException("Cancellation link is invalid"));
     OffsetDateTime now = OffsetDateTime.now(BUSINESS_ZONE);

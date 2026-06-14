@@ -79,10 +79,10 @@ interface BackendServiceRecord {
 }
 
 interface BackendAppointment {
-  id: string;
-  customerId: string;
+  id: string | number;
+  customerId: string | number;
   customerName?: string;
-  vehicleId: string;
+  vehicleId: string | number;
   vehiclePlate?: string;
   vehicleName?: string;
   scheduledAt: string;
@@ -197,16 +197,16 @@ const toServiceRecordRequest = (record: Omit<ServiceRecord, 'id'>) => ({
 });
 
 const toAppointment = (appointment: BackendAppointment): Appointment => ({
-  id: appointment.id,
-  customerId: appointment.customerId,
+  id: String(appointment.id),
+  customerId: String(appointment.customerId),
   customerName: appointment.customerName,
-  vehicleId: appointment.vehicleId,
+  vehicleId: String(appointment.vehicleId),
   vehiclePlate: appointment.vehiclePlate,
   vehicleName: appointment.vehicleName,
   title: appointment.serviceType,
   startsAt: appointment.scheduledAt,
   endsAt: appointment.endsAt,
-  status: appointment.status === 'SCHEDULED' ? 'BOOKED' : appointment.status,
+  status: appointment.status,
   cancellationUrl: appointment.cancellationUrl
 });
 
@@ -275,7 +275,7 @@ export const appointmentsApi = {
   get: (id: string) => unwrap(http.get<BackendAppointment>(`/api/appointments/${id}`)).then(toAppointment),
   create: (payload: Omit<Appointment, 'id'>) => unwrap(http.post<BackendAppointment>('/api/appointments', toAppointmentRequest(payload))).then(toAppointment),
   update: (id: string, payload: Partial<Omit<Appointment, 'id'>>) =>
-    unwrap(http.put<BackendAppointment>(`/api/appointments/${id}`, toAppointmentRequest({ customerId: '', vehicleId: '', title: '', startsAt: '', endsAt: '', status: 'BOOKED', ...payload }))).then(toAppointment),
+    unwrap(http.put<BackendAppointment>(`/api/appointments/${id}`, toAppointmentRequest({ customerId: '', vehicleId: '', title: '', startsAt: '', endsAt: '', status: 'SCHEDULED', ...payload }))).then(toAppointment),
   remove: (id: string) => unwrap(http.delete<void>(`/api/appointments/${id}`)),
   reschedule: (id: string, startsAt: string, endsAt: string) => unwrap(http.patch<BackendAppointment>(`/api/appointments/${id}`, { startsAt, endsAt })).then(toAppointment),
   available: (date: string) => unwrap(http.get<AppointmentSlot[]>('/api/appointments/available', { params: { date } })),

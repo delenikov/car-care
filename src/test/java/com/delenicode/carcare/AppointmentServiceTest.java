@@ -152,6 +152,16 @@ class AppointmentServiceTest {
   }
 
   @Test
+  void deleteRemovesExistingAppointment() {
+    Appointment appointment = appointment(30L, customer(10L), OffsetDateTime.now().plusDays(1));
+    when(appointments.findById(30L)).thenReturn(Optional.of(appointment));
+
+    appointmentService.delete(30L);
+
+    verify(appointments).delete(appointment);
+  }
+
+  @Test
   void cancelByTokenRejectsExpiredOrUsedLink() {
     Appointment appointment = appointment(30L, customer(10L), OffsetDateTime.now().minusDays(1));
     appointment.setCancellationToken("token");

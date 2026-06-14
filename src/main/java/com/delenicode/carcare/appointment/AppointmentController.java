@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,6 +44,12 @@ public class AppointmentController {
   @PatchMapping("/{id}")
   ApiResponse<AppointmentResponse> reschedule(@PathVariable Long id, @Valid @RequestBody AppointmentRescheduleRequest request) {
     return ApiResponse.ok("Appointment rescheduled", appointments.reschedule(id, request));
+  }
+
+  @DeleteMapping("/{id}")
+  ApiResponse<Void> delete(@PathVariable Long id) {
+    appointments.delete(id);
+    return ApiResponse.ok("Appointment deleted", null);
   }
 
   @PostMapping("/cancel/{token}")
