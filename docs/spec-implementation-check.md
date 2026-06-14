@@ -1,6 +1,6 @@
 # Spec Implementation Check
 
-Date: 2026-06-13
+Date: 2026-06-14
 
 Scope checked:
 
@@ -27,7 +27,7 @@ The remaining gaps are outside FR-1 through FR-42 or are non-functional/architec
 - Customer create/update/list/detail/delete with first-name and last-name search.
 - Customer vehicles and customer service-history views.
 - Vehicle create/update/list/detail, customer association, and VIN/license-plate/owner search.
-- Appointment list/calendar, availability slots, scheduling, conflict prevention, 24-hour cancellation links, confirmation emails, reminder emails, cancellation endpoint, and rescheduling.
+- Appointment list/calendar, 08:00-16:00 availability slots, staff scheduling, public customer booking with vehicle VIN/engine/fuel details, conflict prevention, 24-hour cancellation links, confirmation emails, one-day reminder emails, cancellation confirmation page, cancellation endpoint, and rescheduling.
 - Service record create/list with service type, mileage, replaced parts, parts cost, labor cost, calculated total, customer history, and vehicle history.
 - Offer create/list/detail with parts/labor/total breakdown, send email workflow, and PDF export.
 - Service document metadata create/list/detail with automatic generation after service-record creation, send email workflow, and PDF export.
@@ -45,7 +45,8 @@ The remaining gaps are outside FR-1 through FR-42 or are non-functional/architec
 
 ### Appointment Management
 
-- Public `/schedule` flow from `docs/user-flows.md` is missing.
+- Public appointment booking is available at `/book-appointment` and `/appointments/book`.
+- Cancellation links open `/reservations/cancel/:token`, show reservation details, and only cancel after explicit user confirmation.
 - Phone verification, attachment upload, holidays, and configurable working hours are missing.
 
 ### Quotations And Documents
@@ -84,7 +85,7 @@ The remaining gaps are outside FR-1 through FR-42 or are non-functional/architec
 - Unit tests for customer create, name parsing, first-name search, last-name search, and soft delete.
 - Unit tests for vehicle create, update, customer reassignment, duplicate plate rejection, and VIN/license-plate/owner search routing.
 - Unit tests for service-record parts/labor total calculation, backward-compatible total handling, customer/vehicle ownership validation, and vehicle history lookup.
-- Unit tests for appointment available slots, conflict prevention, confirmation email, 24-hour cancellation links, cancellation invalidation, and reminders.
+- Unit tests for appointment available slots, business-hour validation, public booking with full vehicle details, conflict prevention, Macedonian HTML confirmation email, 24-hour cancellation expiry, cancellation-info lookup, cancellation invalidation, and reminder de-duplication.
 - Unit tests for offer parts/labor total calculation, quote email sending, and PDF export delegation.
 - Unit tests for generated service-document metadata, service-document email sending, service-document PDF export delegation, and PDF byte rendering.
 - PostgreSQL Testcontainers integration tests for:
@@ -98,7 +99,7 @@ The remaining gaps are outside FR-1 through FR-42 or are non-functional/architec
   - Customer first-name/last-name search, customer vehicle display, customer service-history display, and customer delete.
   - Vehicle VIN/license-plate/owner search, vehicle create DTO mapping, and vehicle update DTO mapping.
   - Service-record creation with service type, mileage, replaced parts, parts/labor cost breakdown, and calculated total.
-  - Appointment available-slot display and scheduling DTO mapping.
+  - Appointment available-slot display, staff scheduling DTO mapping, public appointment booking, and cancellation confirmation before final cancellation.
   - Offer creation with parts/labor breakdown and quote send action.
   - Quote PDF export action.
   - Generated service-document PDF export and send actions.

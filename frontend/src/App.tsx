@@ -14,6 +14,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ResourcePage } from './pages/ResourcePages';
 import { AppointmentsPage } from './pages/AppointmentsPage';
+import { PublicAppointmentPage } from './pages/PublicAppointmentPage';
+import { CancelReservationPage } from './pages/CancelReservationPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { OffersPage } from './pages/OffersPage';
 import { DocumentsPage } from './pages/DocumentsPage';
@@ -55,6 +57,9 @@ const resourceRoutes = (kind: 'customers' | 'vehicles') => [
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/book-appointment', element: <PublicAppointmentPage /> },
+  { path: '/appointments/book', element: <PublicAppointmentPage /> },
+  { path: '/reservations/cancel/:token', element: <CancelReservationPage /> },
   {
     path: '/',
     element: (

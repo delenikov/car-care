@@ -1,5 +1,5 @@
 import { http, refreshAccessToken, refreshTokenStorage, tokenStorage, unwrap } from './http';
-import type { Appointment, AppointmentSlot, AuthResponse, Customer, DashboardSummary, DocumentRecord, LoyaltyRule, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
+import type { Appointment, AppointmentCancellationInfo, AppointmentSlot, AuthResponse, Customer, DashboardSummary, DocumentRecord, LoyaltyRule, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
 import { skopjeOffsetDateTime } from '../utils/dateTime';
 
 export interface LoginPayload {
@@ -81,7 +81,10 @@ interface BackendServiceRecord {
 interface BackendAppointment {
   id: string;
   customerId: string;
+  customerName?: string;
   vehicleId: string;
+  vehiclePlate?: string;
+  vehicleName?: string;
   scheduledAt: string;
   endsAt: string;
   serviceType: string;
@@ -196,7 +199,10 @@ const toServiceRecordRequest = (record: Omit<ServiceRecord, 'id'>) => ({
 const toAppointment = (appointment: BackendAppointment): Appointment => ({
   id: appointment.id,
   customerId: appointment.customerId,
+  customerName: appointment.customerName,
   vehicleId: appointment.vehicleId,
+  vehiclePlate: appointment.vehiclePlate,
+  vehicleName: appointment.vehicleName,
   title: appointment.serviceType,
   startsAt: appointment.scheduledAt,
   endsAt: appointment.endsAt,
@@ -274,7 +280,25 @@ export const appointmentsApi = {
   reschedule: (id: string, startsAt: string, endsAt: string) => unwrap(http.patch<BackendAppointment>(`/api/appointments/${id}`, { startsAt, endsAt })).then(toAppointment),
   available: (date: string) => unwrap(http.get<AppointmentSlot[]>('/api/appointments/available', { params: { date } })),
   sendReminders: (date: string) => unwrap(http.post<{ sent: number }>('/api/appointments/reminders', {}, { params: { date } })),
-  cancel: (token: string) => unwrap(http.post<BackendAppointment>(`/api/appointments/cancel/${token}`, {})).then(toAppointment)
+  cancel: (token: string) => unwrap(http.post<BackendAppointment>(`/api/appointments/cancel/${token}`, {})).then(toAppointment),
+  publicCreate: (payload: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    plateNumber: string;
+    vin?: string;
+    make: string;
+    model: string;
+    modelYear?: number;
+    engine?: string;
+    fuelType?: string;
+    startsAt: string;
+    endsAt?: string;
+    serviceType: string;
+    notes?: string;
+  }) => unwrap(http.post<BackendAppointment>('/api/appointments/public', payload)).then(toAppointment),
+  cancelInfo: (token: string) => unwrap(http.get<AppointmentCancellationInfo>(`/api/appointments/cancel-info/${token}`)),
+  confirmCancel: (token: string) => unwrap(http.post<BackendAppointment>('/api/appointments/cancel', { token })).then(toAppointment)
 };
 export const serviceRecordsApi = {
   list: () => unwrap(http.get<BackendServiceRecord[]>('/api/service-records')).then((records) => records.map(toServiceRecord)),

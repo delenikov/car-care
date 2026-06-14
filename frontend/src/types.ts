@@ -48,12 +48,27 @@ export interface Vehicle {
 export interface Appointment {
   id: string;
   customerId: string;
+  customerName?: string;
   vehicleId: string;
+  vehiclePlate?: string;
+  vehicleName?: string;
   title: string;
   startsAt: string;
   endsAt: string;
   status: 'BOOKED' | 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   cancellationUrl?: string;
+}
+
+export interface AppointmentCancellationInfo {
+  customerName: string;
+  vehiclePlate: string;
+  vehicleName: string;
+  scheduledAt: string;
+  endsAt: string;
+  serviceType: string;
+  status: Appointment['status'];
+  cancellable: boolean;
+  message: string;
 }
 
 export interface AppointmentSlot {

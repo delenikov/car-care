@@ -159,7 +159,7 @@ class CarcarePostgresIntegrationTest {
     assertThat(appointment.get("status").asText()).isEqualTo("SCHEDULED");
     assertThat(appointment.get("endsAt").asText()).isEqualTo(appointmentStart.plusHours(1).toString());
     String cancellationUrl = appointment.get("cancellationUrl").asText();
-    assertThat(cancellationUrl).startsWith("/api/appointments/cancel/");
+    assertThat(cancellationUrl).startsWith("http://localhost:5173/reservations/cancel/");
 
     post("/api/appointments", admin, Map.of(
         "customerId", customerId,
@@ -175,9 +175,11 @@ class CarcarePostgresIntegrationTest {
     assertThat(reminders.get("sent").asInt()).isGreaterThanOrEqualTo(1);
 
     String cancellationToken = cancellationUrl.substring(cancellationUrl.lastIndexOf('/') + 1);
-    JsonNode cancelledAppointment = post("/api/appointments/cancel/" + cancellationToken, null, Map.of(), 200).get("data");
+    JsonNode cancellationInfo = get("/api/appointments/cancel-info/" + cancellationToken, null, 200).get("data");
+    assertThat(cancellationInfo.get("cancellable").asBoolean()).isTrue();
+    JsonNode cancelledAppointment = post("/api/appointments/cancel", null, Map.of("token", cancellationToken), 200).get("data");
     assertThat(cancelledAppointment.get("status").asText()).isEqualTo("CANCELLED");
-    post("/api/appointments/cancel/" + cancellationToken, null, Map.of(), 400);
+    post("/api/appointments/cancel", null, Map.of("token", cancellationToken), 400);
 
     JsonNode serviceRecord = post("/api/service-records", admin, Map.of(
         "customerId", customerId,

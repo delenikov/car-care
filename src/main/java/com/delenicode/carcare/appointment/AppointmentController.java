@@ -30,6 +30,11 @@ public class AppointmentController {
     return ApiResponse.ok("Available appointments loaded", appointments.availableSlots(date));
   }
 
+  @PostMapping("/public")
+  ApiResponse<AppointmentResponse> publicBooking(@Valid @RequestBody PublicAppointmentRequest request) {
+    return ApiResponse.ok("Appointment created", appointments.createPublic(request));
+  }
+
   @PostMapping
   ApiResponse<AppointmentResponse> create(@Valid @RequestBody AppointmentRequest request) {
     return ApiResponse.ok("Appointment created", appointments.create(request));
@@ -43,6 +48,16 @@ public class AppointmentController {
   @PostMapping("/cancel/{token}")
   ApiResponse<AppointmentResponse> cancel(@PathVariable String token) {
     return ApiResponse.ok("Appointment cancelled", appointments.cancelByToken(token));
+  }
+
+  @PostMapping("/cancel")
+  ApiResponse<AppointmentResponse> cancelWithBody(@Valid @RequestBody AppointmentCancelRequest request) {
+    return ApiResponse.ok("Appointment cancelled", appointments.cancelByToken(request.token()));
+  }
+
+  @GetMapping("/cancel-info/{token}")
+  ApiResponse<AppointmentCancellationInfoResponse> cancellationInfo(@PathVariable String token) {
+    return ApiResponse.ok("Appointment cancellation info loaded", appointments.cancellationInfo(token));
   }
 
   @PostMapping("/reminders")

@@ -52,4 +52,6 @@ public class Appointment extends BaseEntity {
   private OffsetDateTime cancellationExpiresAt;
 
   private OffsetDateTime cancellationUsedAt;
+
+  private OffsetDateTime reminderSentAt;
 }

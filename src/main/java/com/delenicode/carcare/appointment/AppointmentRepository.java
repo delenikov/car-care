@@ -23,6 +23,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
   @Query("""
       select appointment from Appointment appointment
       where appointment.status = com.delenicode.carcare.appointment.AppointmentStatus.SCHEDULED
+        and appointment.reminderSentAt is null
         and appointment.scheduledAt >= :startsAt
         and appointment.scheduledAt < :endsAt
       order by appointment.scheduledAt

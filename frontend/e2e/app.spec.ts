@@ -122,20 +122,20 @@ async function mockBackend(page: Page) {
       const body = route.request().postDataJSON();
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '302', customerId: body.customerId, vehicleId: body.vehicleId, scheduledAt: body.startsAt, endsAt: body.endsAt, serviceType: body.title, status: 'SCHEDULED', cancellationUrl: '/api/appointments/cancel/token-302' }))
+        body: JSON.stringify(ok({ id: '302', customerId: body.customerId, vehicleId: body.vehicleId, scheduledAt: body.startsAt, endsAt: body.endsAt, serviceType: body.title, status: 'SCHEDULED', cancellationUrl: 'http://localhost:5173/reservations/cancel/token-302' }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '301', customerId: '101', vehicleId: '201', scheduledAt: '2026-06-15T09:00:00.000Z', endsAt: '2026-06-15T10:00:00.000Z', serviceType: 'Oil change', status: 'SCHEDULED', cancellationUrl: '/api/appointments/cancel/token-301' }]))
+      body: JSON.stringify(ok([{ id: '301', customerId: '101', vehicleId: '201', scheduledAt: '2026-06-15T09:00:00.000Z', endsAt: '2026-06-15T10:00:00.000Z', serviceType: 'Oil change', status: 'SCHEDULED', cancellationUrl: 'http://localhost:5173/reservations/cancel/token-301' }]))
     });
   });
 
   await page.route('**/api/appointments/available**', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ startsAt: '2026-06-20T09:00:00.000+02:00', endsAt: '2026-06-20T10:00:00.000+02:00' }]))
+      body: JSON.stringify(ok([{ startsAt: '2026-06-20T08:00:00.000+02:00', endsAt: '2026-06-20T09:00:00.000+02:00' }]))
     });
   });
 
@@ -654,7 +654,14 @@ test('shows available appointments and schedules without conflicts', async ({ pa
     availableUrl = route.request().url();
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ startsAt: '2026-06-20T09:00:00.000+02:00', endsAt: '2026-06-20T10:00:00.000+02:00' }]))
+      body: JSON.stringify(ok([{ startsAt: '2026-06-20T08:00:00.000+02:00', endsAt: '2026-06-20T09:00:00.000+02:00' }]))
+    });
+  });
+
+  await page.route('**/api/customers/*/vehicles', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok([{ id: '201', customerId: '101', customerName: 'Ada Lovelace', plateNumber: 'SK-1234-AA', make: 'Volkswagen', model: 'Golf', modelYear: 2020, vin: 'VIN123', fuelType: 'Diesel', engine: '2.0 TDI' }]))
     });
   });
 
@@ -664,35 +671,42 @@ test('shows available appointments and schedules without conflicts', async ({ pa
       appointmentPayload = request.postDataJSON();
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '302', customerId: '101', vehicleId: '201', scheduledAt: appointmentPayload?.startsAt, endsAt: appointmentPayload?.endsAt, serviceType: appointmentPayload?.title, status: 'SCHEDULED', cancellationUrl: '/api/appointments/cancel/token-302' }))
+        body: JSON.stringify(ok({ id: '302', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: appointmentPayload?.startsAt, endsAt: appointmentPayload?.endsAt, serviceType: appointmentPayload?.title, status: 'SCHEDULED', cancellationUrl: 'http://localhost:5173/reservations/cancel/token-302' }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '301', customerId: '101', vehicleId: '201', scheduledAt: '2026-06-15T09:00:00.000Z', endsAt: '2026-06-15T10:00:00.000Z', serviceType: 'Oil change', status: 'SCHEDULED' }]))
+      body: JSON.stringify(ok([
+        { id: '301', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-15T09:00:00.000Z', endsAt: '2026-06-15T10:00:00.000Z', serviceType: 'Oil change', status: 'SCHEDULED' },
+        { id: '304', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-15T11:00:00.000Z', endsAt: '2026-06-15T12:00:00.000Z', serviceType: 'Cancelled check', status: 'CANCELLED' }
+      ]))
     });
   });
 
   await page.goto('/appointments');
+  await expect(page.getByText('Oil change').first()).toBeVisible();
+  await expect(page.getByText('Cancelled check')).toHaveCount(0);
   await expect(page.getByRole('group', { name: 'Достапен датум' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Почеток датум' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Почеток време' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Крај датум' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Крај време' })).toBeVisible();
   await fillDatePickerGroup(page, 'Достапен датум', '20.06.2026');
-  const availableSlot = page.locator('.MuiChip-root').filter({ hasText: '09:00' });
+  const availableSlot = page.locator('.MuiChip-root').filter({ hasText: '08:00' });
   await expect(availableSlot).toBeVisible();
   expect(availableUrl).toContain('date=2026-06-20');
 
   await availableSlot.click();
-  await page.locator('input[name="customerId"]').fill('101');
-  await page.locator('input[name="vehicleId"]').fill('201');
+  await page.locator('input[name="customerId"]').fill('Ada');
+  await page.getByRole('option', { name: 'Ada Lovelace', exact: true }).click();
+  await page.locator('input[name="vehicleId"]').fill('SK-1234-AA');
+  await page.getByRole('option', { name: /SK-1234-AA - Volkswagen Golf/ }).click();
   await page.locator('input[name="title"]').fill('Minor Service');
   await expect(page.locator('input[name="startsAtDate"]')).toHaveValue(/20\.06\.2026/);
-  await expect(page.locator('input[name="startsAtTime"]')).toHaveValue(/09:00/);
+  await expect(page.locator('input[name="startsAtTime"]')).toHaveValue(/08:00/);
   await expect(page.locator('input[name="endsAtDate"]')).toHaveValue(/20\.06\.2026/);
-  await expect(page.locator('input[name="endsAtTime"]')).toHaveValue(/10:00/);
+  await expect(page.locator('input[name="endsAtTime"]')).toHaveValue(/09:00/);
   await page.locator('button[type="submit"]').click();
 
   expect(appointmentPayload).toMatchObject({
@@ -700,8 +714,93 @@ test('shows available appointments and schedules without conflicts', async ({ pa
     vehicleId: '201',
     title: 'Minor Service'
   });
-  expect(appointmentPayload?.startsAt).toBe('2026-06-20T09:00:00+02:00');
-  expect(appointmentPayload?.endsAt).toBe('2026-06-20T10:00:00+02:00');
+  expect(appointmentPayload?.startsAt).toBe('2026-06-20T08:00:00+02:00');
+  expect(appointmentPayload?.endsAt).toBe('2026-06-20T09:00:00+02:00');
+});
+
+test('allows public customers to book an available appointment', async ({ page }) => {
+  let publicPayload: Record<string, unknown> | undefined;
+
+  await page.route('**/api/appointments/available**', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok([{ startsAt: '2026-06-20T08:00:00.000+02:00', endsAt: '2026-06-20T09:00:00.000+02:00' }]))
+    });
+  });
+
+  await page.route('**/api/appointments/public', async (route) => {
+    publicPayload = route.request().postDataJSON();
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok({ id: '303', customerId: '101', customerName: publicPayload?.fullName, vehicleId: '201', vehiclePlate: publicPayload?.plateNumber, vehicleName: `${publicPayload?.make} ${publicPayload?.model}`, scheduledAt: publicPayload?.startsAt, endsAt: publicPayload?.endsAt, serviceType: publicPayload?.serviceType, status: 'SCHEDULED', cancellationUrl: 'http://localhost:5173/reservations/cancel/token-303' }))
+    });
+  });
+
+  await page.goto('/book-appointment');
+  await page.locator('.MuiChip-root').filter({ hasText: '08:00' }).click();
+  await page.locator('input[name="fullName"]').fill('Public Customer');
+  await page.locator('input[name="email"]').fill('public@carcare.test');
+  await page.locator('input[name="phone"]').fill('+38970111111');
+  await page.locator('input[name="serviceType"]').fill('Minor Service');
+  await page.locator('input[name="plateNumber"]').fill('SK-9999-AA');
+  await page.locator('input[name="vin"]').fill('WAUZZZ8V0KA000001');
+  await page.locator('input[name="make"]').fill('Audi');
+  await page.locator('input[name="model"]').fill('A3');
+  await page.locator('input[name="modelYear"]').fill('2020');
+  await page.locator('input[name="engine"]').fill('1.6 TDI');
+  await page.locator('input[name="fuelType"]').fill('Diesel');
+  await page.locator('button[type="submit"]').click();
+
+  expect(publicPayload).toMatchObject({
+    fullName: 'Public Customer',
+    email: 'public@carcare.test',
+    plateNumber: 'SK-9999-AA',
+    vin: 'WAUZZZ8V0KA000001',
+    make: 'Audi',
+    model: 'A3',
+    modelYear: 2020,
+    engine: '1.6 TDI',
+    fuelType: 'Diesel',
+    startsAt: '2026-06-20T08:00:00+02:00',
+    endsAt: '2026-06-20T09:00:00+02:00',
+    serviceType: 'Minor Service'
+  });
+});
+
+test('shows cancellation details before cancelling a public reservation', async ({ page }) => {
+  let cancelledPayload: Record<string, unknown> | undefined;
+
+  await page.route('**/api/appointments/cancel-info/token-303', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok({
+        customerName: 'Public Customer',
+        vehiclePlate: 'SK-9999-AA',
+        vehicleName: 'Audi A3',
+        scheduledAt: '2026-06-20T08:00:00+02:00',
+        endsAt: '2026-06-20T09:00:00+02:00',
+        serviceType: 'Minor Service',
+        status: 'SCHEDULED',
+        cancellable: true,
+        message: 'Терминот може да се откаже.'
+      }))
+    });
+  });
+
+  await page.route('**/api/appointments/cancel', async (route) => {
+    cancelledPayload = route.request().postDataJSON();
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok({ id: '303', customerId: '101', vehicleId: '201', scheduledAt: '2026-06-20T08:00:00+02:00', endsAt: '2026-06-20T09:00:00+02:00', serviceType: 'Minor Service', status: 'CANCELLED' }))
+    });
+  });
+
+  await page.goto('/reservations/cancel/token-303');
+  await expect(page.getByText('Public Customer')).toBeVisible();
+  await expect(page.getByText('SK-9999-AA - Audi A3')).toBeVisible();
+  await page.getByRole('button', { name: 'Откажи термин' }).click();
+
+  expect(cancelledPayload).toEqual({ token: 'token-303' });
 });
 
 test('creates and sends quotations with a detailed cost breakdown', async ({ page }) => {

@@ -2,18 +2,14 @@ package com.delenicode.carcare.appointment;
 
 import java.time.OffsetDateTime;
 
-public record AppointmentResponse(
-    Long id,
-    Long customerId,
+public record AppointmentCancellationInfoResponse(
     String customerName,
-    Long vehicleId,
     String vehiclePlate,
     String vehicleName,
     OffsetDateTime scheduledAt,
     OffsetDateTime endsAt,
     String serviceType,
     AppointmentStatus status,
-    String notes,
-    OffsetDateTime cancellationExpiresAt,
-    String cancellationUrl) {
+    boolean cancellable,
+    String message) {
 }
