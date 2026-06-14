@@ -64,7 +64,10 @@ export interface AppointmentSlot {
 export interface ServiceRecord {
   id: string;
   customerId: string;
+  customerName?: string;
   vehicleId: string;
+  vehiclePlate?: string;
+  vehicleName?: string;
   performedAt: string;
   mileage: number;
   summary: string;

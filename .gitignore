@@ -148,3 +148,6 @@ sonar-report.json
 *.temp
 *.swp
 *~
+
+# Data mailpit
+data/

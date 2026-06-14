@@ -64,7 +64,10 @@ interface BackendVehicle {
 interface BackendServiceRecord {
   id: string;
   customerId: string;
+  customerName?: string;
   vehicleId: string;
+  vehiclePlate?: string;
+  vehicleName?: string;
   serviceDate: string;
   serviceType: string;
   partsCost?: number;
@@ -164,7 +167,10 @@ const toVehicleRequest = (vehicle: Omit<Vehicle, 'id'>) => ({
 const toServiceRecord = (record: BackendServiceRecord): ServiceRecord => ({
   id: record.id,
   customerId: record.customerId,
+  customerName: record.customerName,
   vehicleId: record.vehicleId,
+  vehiclePlate: record.vehiclePlate,
+  vehicleName: record.vehicleName,
   performedAt: record.serviceDate,
   mileage: record.odometer,
   summary: record.serviceType,

@@ -151,7 +151,10 @@ class ServiceRecordServiceTest {
     var response = serviceRecordService.findById(30L);
 
     assertThat(response.customerId()).isEqualTo(10L);
+    assertThat(response.customerName()).isEqualTo("Ada Lovelace");
     assertThat(response.vehicleId()).isEqualTo(20L);
+    assertThat(response.vehiclePlate()).isEqualTo("SK-20");
+    assertThat(response.vehicleName()).isEqualTo("Volkswagen Golf");
     assertThat(response.serviceDate()).isEqualTo(LocalDate.of(2026, 6, 12));
     assertThat(response.serviceType()).isEqualTo("Major Service");
     assertThat(response.partsCost()).isEqualByComparingTo("1200.00");

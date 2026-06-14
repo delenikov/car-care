@@ -28,7 +28,7 @@ import { DateInput, TimeInput } from '../components/DateTimeInputs';
 import { FormTextField } from '../components/FormTextField';
 import { EmptyState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
-import type { Customer, Vehicle } from '../types';
+import type { Customer, ServiceRecord, Vehicle } from '../types';
 import { skopjeDate, skopjeTime } from '../utils/dateTime';
 
 const schema = z.object({
@@ -48,6 +48,8 @@ type ServiceForm = z.output<typeof schema>;
 const customerLabel = (customer: Customer | null) => customer?.name ?? '';
 const vehicleLabel = (vehicle: Vehicle | null) =>
   vehicle ? `${vehicle.plate} - ${vehicle.make} ${vehicle.model}${vehicle.year ? ` (${vehicle.year})` : ''}` : '';
+const serviceVehicleLabel = (record: ServiceRecord) =>
+  [record.vehiclePlate, record.vehicleName].filter(Boolean).join(' - ') || record.vehicleId;
 const sumParts = (parts: Array<{ price?: number | string }>) => parts.reduce((total, part) => total + (Number(part.price) || 0), 0);
 
 export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'detail' }) {
@@ -276,7 +278,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
           <Box>
             <Typography variant="h2">{record.summary}</Typography>
             <Typography color="text.secondary">
-              {record.performedAt} - {record.cost.toLocaleString('mk-MK')} den.
+              {record.performedAt} - {record.customerName ?? record.customerId} - {serviceVehicleLabel(record)}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
@@ -290,8 +292,9 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
         </Stack>
         <Paper sx={{ p: { xs: 3, md: 4 } }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-            <ServiceField label={t('customerId')} value={record.customerId} />
-            <ServiceField label={t('vehicleId')} value={record.vehicleId} />
+            <ServiceField label={t('customer')} value={record.customerName ?? record.customerId} />
+            <ServiceField label={t('vehicle')} value={serviceVehicleLabel(record)} />
+            <ServiceField label={t('licensePlate')} value={record.vehiclePlate ?? '-'} />
             <ServiceField label={t('serviceDate')} value={record.performedAt} />
             <ServiceField label={t('serviceType')} value={record.summary} />
             <ServiceField label={t('mileage')} value={`${record.mileage.toLocaleString('mk-MK')} km`} />
@@ -322,6 +325,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>{t('customer')}</TableCell>
                 <TableCell>{t('vehicle')}</TableCell>
                 <TableCell>{t('date')}</TableCell>
                 <TableCell>{t('service')}</TableCell>
@@ -333,7 +337,8 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
             <TableBody>
               {records.map((record) => (
                 <TableRow key={record.id} hover component={RouterLink} to={`/services/${record.id}`} sx={{ cursor: 'pointer' }}>
-                  <TableCell>{record.vehicleId}</TableCell>
+                  <TableCell>{record.customerName ?? record.customerId}</TableCell>
+                  <TableCell>{serviceVehicleLabel(record)}</TableCell>
                   <TableCell>{record.performedAt}</TableCell>
                   <TableCell>{record.summary}</TableCell>
                   <TableCell align="right">{record.partsCost.toLocaleString('mk-MK')} den.</TableCell>

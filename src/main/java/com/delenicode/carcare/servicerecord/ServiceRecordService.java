@@ -70,7 +70,22 @@ public class ServiceRecordService {
   }
 
   public ServiceRecordResponse toResponse(ServiceRecord record) {
-    return new ServiceRecordResponse(record.getId(), record.getCustomer().getId(), record.getVehicle().getId(), record.getServiceDate(), record.getServiceType(), record.getPartsCost(), record.getLaborCost(), record.getTotalAmount(), record.getOdometer(), record.getReplacedParts(), record.getNotes());
+    Vehicle vehicle = record.getVehicle();
+    return new ServiceRecordResponse(
+        record.getId(),
+        record.getCustomer().getId(),
+        record.getCustomer().getFullName(),
+        vehicle.getId(),
+        vehicle.getPlateNumber(),
+        vehicle.getMake() + " " + vehicle.getModel(),
+        record.getServiceDate(),
+        record.getServiceType(),
+        record.getPartsCost(),
+        record.getLaborCost(),
+        record.getTotalAmount(),
+        record.getOdometer(),
+        record.getReplacedParts(),
+        record.getNotes());
   }
 
   private BigDecimal costOrZero(BigDecimal value) {
