@@ -17,10 +17,11 @@ import { DateInput, DateTimeInput } from '../components/DateTimeInputs';
 import { FormTextField } from '../components/FormTextField';
 import { LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
+import { BUSINESS_TIME_ZONE } from '../config/timeZone';
 import type { Appointment, Customer, Vehicle } from '../types';
 import {
-  fullCalendarSkopjeDateTimeInput,
-  fullCalendarSkopjeOffsetDateTime,
+  fullCalendarBusinessDateTimeInput,
+  fullCalendarBusinessOffsetDateTime,
   skopjeDate,
   skopjeDateTimeInput,
   skopjeDisplayDateTime,
@@ -168,8 +169,8 @@ export function AppointmentsPage() {
   });
 
   const handleDrop = async (info: EventDropArg) => {
-    const startsAt = info.event.start ? fullCalendarSkopjeOffsetDateTime(info.event.start) : undefined;
-    const endsAt = info.event.end ? fullCalendarSkopjeOffsetDateTime(info.event.end) : fullCalendarSkopjeOffsetDateTime(new Date((info.event.start?.getTime() ?? Date.now()) + 60 * 60_000));
+    const startsAt = info.event.start ? fullCalendarBusinessOffsetDateTime(info.event.start) : undefined;
+    const endsAt = info.event.end ? fullCalendarBusinessOffsetDateTime(info.event.end) : fullCalendarBusinessOffsetDateTime(new Date((info.event.start?.getTime() ?? Date.now()) + 60 * 60_000));
     if (!startsAt) {
       info.revert();
       return;
@@ -228,7 +229,7 @@ export function AppointmentsPage() {
             editable
             selectable
             nowIndicator
-            timeZone="Europe/Skopje"
+            timeZone={BUSINESS_TIME_ZONE}
             slotMinTime="06:00:00"
             slotMaxTime="18:00:00"
             scrollTime="08:00:00"
@@ -250,8 +251,8 @@ export function AppointmentsPage() {
               info.el.style.cursor = 'pointer';
             }}
             select={(selection) => {
-              setValue('startsAt', fullCalendarSkopjeDateTimeInput(selection.start));
-              setValue('endsAt', fullCalendarSkopjeDateTimeInput(selection.end));
+              setValue('startsAt', fullCalendarBusinessDateTimeInput(selection.start));
+              setValue('endsAt', fullCalendarBusinessDateTimeInput(selection.end));
             }}
           />
         </Paper>

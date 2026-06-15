@@ -1,4 +1,4 @@
-const SKOPJE_TIME_ZONE = 'Europe/Skopje';
+import { BUSINESS_TIME_ZONE } from '../config/timeZone';
 
 const partsFor = (value: Date | string) => {
   if (typeof value === 'string') {
@@ -16,7 +16,7 @@ const partsFor = (value: Date | string) => {
   }
   const date = value instanceof Date ? value : new Date(value);
   const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: SKOPJE_TIME_ZONE,
+    timeZone: BUSINESS_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -30,7 +30,7 @@ const partsFor = (value: Date | string) => {
 
 const offsetFor = (date: Date) => {
   const timeZoneName = new Intl.DateTimeFormat('en-GB', {
-    timeZone: SKOPJE_TIME_ZONE,
+    timeZone: BUSINESS_TIME_ZONE,
     timeZoneName: 'shortOffset'
   }).formatToParts(date).find((part) => part.type === 'timeZoneName')?.value ?? 'GMT+1';
   const match = timeZoneName.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
@@ -53,7 +53,7 @@ export const skopjeTime = (value: Date | string) => {
 
 export const skopjeDateTimeInput = (value: Date | string) => `${skopjeDate(value)}T${skopjeTime(value)}`;
 
-export const fullCalendarSkopjeDateTimeInput = (value: Date) => {
+export const fullCalendarBusinessDateTimeInput = (value: Date) => {
   const year = String(value.getUTCFullYear()).padStart(4, '0');
   const month = String(value.getUTCMonth() + 1).padStart(2, '0');
   const day = String(value.getUTCDate()).padStart(2, '0');
@@ -92,8 +92,8 @@ export const skopjeOffsetDateTime = (value: Date | string): string => {
   return `${datePart}T${normalizedTime}${offsetFor(utcGuess)}`;
 };
 
-export const fullCalendarSkopjeOffsetDateTime = (value: Date): string => {
-  const localDateTime = fullCalendarSkopjeDateTimeInput(value);
+export const fullCalendarBusinessOffsetDateTime = (value: Date): string => {
+  const localDateTime = fullCalendarBusinessDateTimeInput(value);
   const [datePart, timePart] = localDateTime.split('T');
   const normalizedTime = `${timePart}:00`;
   const utcGuess = new Date(`${datePart}T${normalizedTime}Z`);

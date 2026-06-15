@@ -24,6 +24,8 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.TimeZone;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,10 +47,18 @@ class AppointmentServiceTest {
   EmailService emailService;
 
   AppointmentService appointmentService;
+  TimeZone previousTimeZone;
 
   @BeforeEach
   void setUp() {
+    previousTimeZone = TimeZone.getDefault();
+    TimeZone.setDefault(TimeZone.getTimeZone("Europe/Skopje"));
     appointmentService = new AppointmentService(appointments, customers, vehicles, emailService);
+  }
+
+  @AfterEach
+  void tearDown() {
+    TimeZone.setDefault(previousTimeZone);
   }
 
   @Test

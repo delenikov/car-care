@@ -10,7 +10,6 @@ import com.delenicode.carcare.vehicle.VehicleRepository;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -22,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class OfferService {
-  private static final ZoneId SKOPJE_ZONE = ZoneId.of("Europe/Skopje");
   private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
   private static final Locale MK_LOCALE = Locale.forLanguageTag("mk-MK");
 
@@ -159,7 +157,7 @@ public class OfferService {
 
   private String offerHtmlBody(Offer offer) {
     Customer customer = offer.getCustomer();
-    String issueDate = DATE_FORMAT.format(LocalDate.now(SKOPJE_ZONE));
+    String issueDate = DATE_FORMAT.format(LocalDate.now());
     String vehicleText = offer.getVehicle() == null ? "-" : escape(offer.getVehicle().getPlateNumber() + " - " + offer.getVehicle().getMake() + " " + offer.getVehicle().getModel());
     return """
         <!doctype html>

@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
-  private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Skopje");
   private static final LocalTime BUSINESS_START = LocalTime.of(8, 0);
   private static final LocalTime BUSINESS_END = LocalTime.of(16, 0);
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -127,7 +126,7 @@ public class AppointmentService {
   @Transactional
   public AppointmentResponse cancelByToken(String token) {
     Appointment appointment = appointments.findByCancellationToken(token).orElseThrow(() -> new IllegalArgumentException("Cancellation link is invalid"));
-    OffsetDateTime now = OffsetDateTime.now(BUSINESS_ZONE);
+    OffsetDateTime now = OffsetDateTime.now();
     if (appointment.getCancellationUsedAt() != null || cancellationExpired(appointment, now)) {
       throw new IllegalArgumentException("Cancellation link has expired");
     }
@@ -139,7 +138,7 @@ public class AppointmentService {
   @Transactional(readOnly = true)
   public AppointmentCancellationInfoResponse cancellationInfo(String token) {
     Appointment appointment = appointments.findByCancellationToken(token).orElseThrow(() -> new IllegalArgumentException("Cancellation link is invalid"));
-    OffsetDateTime now = OffsetDateTime.now(BUSINESS_ZONE);
+    OffsetDateTime now = OffsetDateTime.now();
     boolean cancellable = appointment.getCancellationUsedAt() == null
         && !cancellationExpired(appointment, now)
         && appointment.getStatus() != AppointmentStatus.CANCELLED;
@@ -159,10 +158,10 @@ public class AppointmentService {
 
   @Transactional
   public ReminderSummaryResponse sendReminders(LocalDate date) {
-    OffsetDateTime startsAt = date.atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+    OffsetDateTime startsAt = date.atStartOfDay(businessZone()).toOffsetDateTime();
     OffsetDateTime endsAt = startsAt.plusDays(1);
     List<Appointment> candidates = appointments.findReminderCandidates(startsAt, endsAt);
-    OffsetDateTime now = OffsetDateTime.now(BUSINESS_ZONE);
+    OffsetDateTime now = OffsetDateTime.now();
     candidates.forEach(appointment -> {
       EmailDeliveryResult result = emailService.send(appointment.getCustomer().getEmail(), "Appointment reminder", "Reminder for " + appointment.getServiceType() + " at " + normalize(appointment.getScheduledAt()));
       if (result == null || result.accepted()) {
@@ -217,12 +216,12 @@ public class AppointmentService {
   }
 
   private void rejectOutsideBusinessHours(OffsetDateTime startsAt, OffsetDateTime endsAt) {
-    LocalDate startDate = startsAt.atZoneSameInstant(BUSINESS_ZONE).toLocalDate();
-    LocalDate endDate = endsAt.atZoneSameInstant(BUSINESS_ZONE).toLocalDate();
-    LocalTime startTime = startsAt.atZoneSameInstant(BUSINESS_ZONE).toLocalTime();
-    LocalTime endTime = endsAt.atZoneSameInstant(BUSINESS_ZONE).toLocalTime();
+    LocalDate startDate = startsAt.atZoneSameInstant(businessZone()).toLocalDate();
+    LocalDate endDate = endsAt.atZoneSameInstant(businessZone()).toLocalDate();
+    LocalTime startTime = startsAt.atZoneSameInstant(businessZone()).toLocalTime();
+    LocalTime endTime = endsAt.atZoneSameInstant(businessZone()).toLocalTime();
     if (!startDate.equals(endDate) || startTime.isBefore(BUSINESS_START) || endTime.isAfter(BUSINESS_END)) {
-      throw new IllegalArgumentException("Appointment must be between 08:00 and 16:00 Europe/Skopje");
+      throw new IllegalArgumentException("Appointment must be between 08:00 and 16:00 " + businessZone().getId());
     }
   }
 
@@ -245,7 +244,7 @@ public class AppointmentService {
   }
 
   private OffsetDateTime cancellationExpiry() {
-    return OffsetDateTime.now(BUSINESS_ZONE).plusHours(24);
+    return OffsetDateTime.now().plusHours(24);
   }
 
   private boolean cancellationExpired(Appointment appointment, OffsetDateTime now) {
@@ -451,10 +450,14 @@ public class AppointmentService {
   }
 
   private OffsetDateTime atBusinessZone(LocalDate date, int hour) {
-    return date.atTime(hour, 0, 0).atZone(BUSINESS_ZONE).toOffsetDateTime();
+    return date.atTime(hour, 0, 0).atZone(businessZone()).toOffsetDateTime();
   }
 
   private OffsetDateTime normalize(OffsetDateTime value) {
-    return value == null ? null : value.atZoneSameInstant(BUSINESS_ZONE).toOffsetDateTime();
+    return value == null ? null : value.atZoneSameInstant(businessZone()).toOffsetDateTime();
+  }
+
+  private ZoneId businessZone() {
+    return ZoneId.systemDefault();
   }
 }
