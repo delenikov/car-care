@@ -1,5 +1,5 @@
 import { http, refreshAccessToken, refreshTokenStorage, tokenStorage, unwrap } from './http';
-import type { Appointment, AppointmentCancellationInfo, AppointmentSlot, AuthResponse, Customer, CustomerLoyaltyStatus, DashboardSummary, DocumentRecord, LoyaltyRule, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
+import type { Appointment, AppointmentCancellationInfo, AppointmentSlot, AuthResponse, Customer, CustomerLoyaltyStatus, DashboardSummary, DocumentRecord, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
 import { skopjeOffsetDateTime } from '../utils/dateTime';
 
 export interface LoginPayload {
@@ -25,14 +25,6 @@ export const authApi = {
     refreshTokenStorage.clear();
   }
 };
-
-const crud = <T extends { id: string }, CreatePayload = Omit<T, 'id'>, UpdatePayload = Partial<CreatePayload>>(basePath: string) => ({
-  list: () => unwrap(http.get<T[]>(basePath)),
-  get: (id: string) => unwrap(http.get<T>(`${basePath}/${id}`)),
-  create: (payload: CreatePayload) => unwrap(http.post<T>(basePath, payload)),
-  update: (id: string, payload: UpdatePayload) => unwrap(http.put<T>(`${basePath}/${id}`, payload)),
-  remove: (id: string) => unwrap(http.delete<void>(`${basePath}/${id}`))
-});
 
 export const dashboardApi = {
   summary: () => unwrap(http.get<DashboardSummary>('/api/dashboard/summary'))
@@ -96,7 +88,10 @@ interface BackendAppointment {
 interface BackendOffer {
   id: string;
   customerId: string;
+  customerName?: string;
   vehicleId?: string;
+  vehiclePlate?: string;
+  vehicleName?: string;
   title: string;
   description?: string;
   parts?: Array<{ name: string; price: number }>;
@@ -233,7 +228,10 @@ const toAppointmentRequest = (appointment: Omit<Appointment, 'id'>) => ({
 const toOffer = (offer: BackendOffer): Offer => ({
   id: offer.id,
   customerId: offer.customerId,
+  customerName: offer.customerName,
   vehicleId: offer.vehicleId,
+  vehiclePlate: offer.vehiclePlate,
+  vehicleName: offer.vehicleName,
   title: offer.title,
   parts: offer.parts ?? [],
   subtotal: offer.subtotalAmount ?? ((offer.partsCost ?? 0) + (offer.laborCost ?? offer.amount)),
@@ -372,4 +370,3 @@ export const adminUsersApi = {
   update: (id: string, payload: EmployeePayload) => unwrap(http.put<User>(`/api/admin/users/${id}`, payload)),
   remove: (id: string) => unwrap(http.delete<void>(`/api/admin/users/${id}`))
 };
-export const loyaltyRulesApi = crud<LoyaltyRule>('/api/admin/loyalty-rules');

@@ -169,13 +169,13 @@ async function mockBackend(page: Page) {
       const body = route.request().postDataJSON();
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '502', ...body, amount: Number(body.partsCost) + Number(body.laborCost), status: 'DRAFT' }))
+        body: JSON.stringify(ok({ id: '502', customerName: 'Ada Lovelace', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', ...body, amount: Number(body.partsCost) + Number(body.laborCost), status: 'DRAFT' }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '501', customerId: '101', vehicleId: '201', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'DRAFT' }]))
+      body: JSON.stringify(ok([{ id: '501', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'DRAFT' }]))
     });
   });
 
@@ -189,13 +189,13 @@ async function mockBackend(page: Page) {
     if (pathname.endsWith('/send')) {
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'SENT' }))
+        body: JSON.stringify(ok({ id: '502', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'SENT' }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'DRAFT' }))
+      body: JSON.stringify(ok({ id: '502', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'DRAFT' }))
     });
   });
 
@@ -222,9 +222,6 @@ async function mockBackend(page: Page) {
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(ok([admin, employee])) });
   });
 
-  await page.route('**/api/admin/loyalty-rules', async (route) => {
-    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(ok([{ id: '701', name: 'Repeat visit reward', pointsPerDenar: 0.01, active: true }])) });
-  });
 }
 
 async function signIn(page: Page, user = admin) {
@@ -621,7 +618,7 @@ test('records services with parts labor and replaced parts', async ({ page }) =>
     partsCost: 1500,
     laborCost: 2000,
     odometer: 123456,
-    replacedParts: 'Oil filter (1,500 den.)',
+    replacedParts: 'Oil filter (1,500 ден.)',
     notes: 'Oil and filters'
   });
   expect(servicePayload).not.toHaveProperty('serviceTime');
@@ -643,7 +640,7 @@ test('opens service details from services and vehicle history', async ({ page })
   await expect(page.getByRole('heading', { name: 'Oil and filters' })).toBeVisible();
   await expect(page.getByText('Заменети делови')).toBeVisible();
   await expect(page.getByText('Oil filter')).toBeVisible();
-  await expect(page.getByText('3,500 den.').first()).toBeVisible();
+  await expect(page.getByText('3,500 ден.').first()).toBeVisible();
 
   await page.goto('/vehicles/201');
   await page.getByRole('row', { name: /Oil and filters/ }).click();
@@ -927,13 +924,13 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
       offerParts = offerPayload.parts as Array<{ name: string; price: number }>;
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '502', ...offerPayload, subtotalAmount: 1200, discountPercent: 10, discountAmount: 120, amount: 1080, status: offerStatus }))
+        body: JSON.stringify(ok({ id: '502', customerName: 'Ada Lovelace', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', ...offerPayload, subtotalAmount: 1200, discountPercent: 10, discountAmount: 120, amount: 1080, status: offerStatus }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '501', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: [{ name: 'Brake pads', price: 700 }], partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 0, discountAmount: 0, amount: 1200, status: 'DRAFT' }]))
+      body: JSON.stringify(ok([{ id: '501', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', parts: [{ name: 'Brake pads', price: 700 }], partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 0, discountAmount: 0, amount: 1200, status: 'DRAFT' }]))
     });
   });
 
@@ -949,13 +946,13 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
       sendCalled = true;
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 10, discountAmount: 120, amount: 1080, status: offerStatus }))
+        body: JSON.stringify(ok({ id: '502', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 10, discountAmount: 120, amount: 1080, status: offerStatus }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 10, discountAmount: 120, amount: 1080, status: offerStatus }))
+      body: JSON.stringify(ok({ id: '502', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 10, discountAmount: 120, amount: 1080, status: offerStatus }))
     });
   });
 
@@ -973,8 +970,8 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
   await page.locator('input[name="parts.0.price"]').fill('700');
   await page.locator('input[name="laborCost"]').fill('500');
   await expect(page.getByText(/10%/)).toBeVisible();
-  await expect(page.locator('input[value="-120 den. (10%)"]')).toBeVisible();
-  await expect(page.locator('input[value="1,080 den."]')).toBeVisible();
+  await expect(page.locator('input[value="-120 ден. (10%)"]')).toBeVisible();
+  await expect(page.locator('input[value="1,080 ден."]')).toBeVisible();
   await expect(page.getByText(/Вкупно делови: 700 ден\./)).toBeVisible();
   await page.locator('button[type="submit"]').click();
 
@@ -989,6 +986,8 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
   });
 
   await page.goto('/offers/502');
+  await expect(page.getByText('Ada Lovelace - SK-1234-AA - Volkswagen Golf')).toBeVisible();
+  await expect(page.getByText('SK-1234-AA').first()).toBeVisible();
   await expect(page.getByText('Цена на делови')).toBeVisible();
   await expect(page.getByText('Brake pads')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Испрати' })).toBeDisabled();

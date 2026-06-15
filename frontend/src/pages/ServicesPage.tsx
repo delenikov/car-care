@@ -98,7 +98,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
     const onSubmit = handleSubmit(async (values) => {
       const { parts, serviceTime: _serviceTime, ...serviceValues } = values;
       void _serviceTime;
-      const replacedParts = parts.map((part) => `${part.name} (${Number(part.price).toLocaleString('mk-MK')} den.)`).join(', ');
+      const replacedParts = parts.map((part) => `${part.name} (${Number(part.price).toLocaleString('mk-MK')} ден.)`).join(', ');
       const computedPartsCost = sumParts(parts);
       await createMutation.mutateAsync({
         ...serviceValues,
@@ -234,7 +234,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
                           name={`parts.${index}.price`}
                           label={t('price')}
                           type="number"
-                          InputProps={{ endAdornment: <InputAdornment position="end">den.</InputAdornment> }}
+                          InputProps={{ endAdornment: <InputAdornment position="end">ден.</InputAdornment> }}
                         />
                         <IconButton aria-label={`${t('delete')} ${index + 1}`} onClick={() => removePart(index)} sx={{ mt: { sm: 1 } }}>
                           <DeleteRoundedIcon />
@@ -254,9 +254,9 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
               name="laborCost"
               label={t('laborCost')}
               type="number"
-              InputProps={{ endAdornment: <InputAdornment position="end">den.</InputAdornment> }}
+              InputProps={{ endAdornment: <InputAdornment position="end">ден.</InputAdornment> }}
             />
-            <TextField label={t('total')} value={`${totalCost.toLocaleString('mk-MK')} den.`} InputProps={{ readOnly: true }} />
+            <TextField label={t('total')} value={`${totalCost.toLocaleString('mk-MK')} ден.`} InputProps={{ readOnly: true }} />
             <FormTextField control={control} name="notes" label={t('notes')} multiline minRows={4} sx={{ gridColumn: { md: '1 / -1' } }} />
           </Box>
           <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
@@ -294,14 +294,13 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
             <ServiceField label={t('customer')} value={record.customerName ?? record.customerId} />
             <ServiceField label={t('vehicle')} value={serviceVehicleLabel(record)} />
-            <ServiceField label={t('licensePlate')} value={record.vehiclePlate ?? '-'} />
             <ServiceField label={t('serviceDate')} value={record.performedAt} />
             <ServiceField label={t('serviceType')} value={record.summary} />
             <ServiceField label={t('mileage')} value={`${record.mileage.toLocaleString('mk-MK')} km`} />
             <ServiceField label={t('replacedParts')} value={record.replacedParts || '-'} wide />
-            <ServiceField label={t('partsCost')} value={`${record.partsCost.toLocaleString('mk-MK')} den.`} />
-            <ServiceField label={t('laborCost')} value={`${record.laborCost.toLocaleString('mk-MK')} den.`} />
-            <ServiceField label={t('total')} value={`${record.cost.toLocaleString('mk-MK')} den.`} />
+            <ServiceField label={t('partsCost')} value={`${record.partsCost.toLocaleString('mk-MK')} ден.`} />
+            <ServiceField label={t('laborCost')} value={`${record.laborCost.toLocaleString('mk-MK')} ден.`} />
+            <ServiceField label={t('total')} value={`${record.cost.toLocaleString('mk-MK')} ден.`} />
             <ServiceField label={t('notes')} value={record.notes || '-'} wide />
           </Box>
         </Paper>
@@ -316,7 +315,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
         <Typography variant="h2">{t('services')}</Typography>
-        <Button component={RouterLink} to="/services/new" variant="contained">
+        <Button component={RouterLink} to="/services/new" variant="contained" startIcon={<AddRoundedIcon />}>
           {t('newService')}
         </Button>
       </Stack>
@@ -341,9 +340,9 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
                   <TableCell>{serviceVehicleLabel(record)}</TableCell>
                   <TableCell>{record.performedAt}</TableCell>
                   <TableCell>{record.summary}</TableCell>
-                  <TableCell align="right">{record.partsCost.toLocaleString('mk-MK')} den.</TableCell>
-                  <TableCell align="right">{record.laborCost.toLocaleString('mk-MK')} den.</TableCell>
-                  <TableCell align="right">{record.cost.toLocaleString('mk-MK')} den.</TableCell>
+                  <TableCell align="right">{record.partsCost.toLocaleString('mk-MK')} ден.</TableCell>
+                  <TableCell align="right">{record.laborCost.toLocaleString('mk-MK')} ден.</TableCell>
+                  <TableCell align="right">{record.cost.toLocaleString('mk-MK')} ден.</TableCell>
                 </TableRow>
               ))}
             </TableBody>

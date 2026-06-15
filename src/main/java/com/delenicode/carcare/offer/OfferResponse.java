@@ -7,7 +7,10 @@ import java.util.List;
 public record OfferResponse(
     Long id,
     Long customerId,
+    String customerName,
     Long vehicleId,
+    String vehiclePlate,
+    String vehicleName,
     String title,
     String description,
     List<OfferPartResponse> parts,

@@ -62,7 +62,7 @@ class CarcarePostgresIntegrationTest {
     JsonNode wrongPassword = post("/api/auth/login", null, Map.of("email", "admin@carcare.local", "password", "wrong-password"), 401);
     assertThat(wrongPassword.get("message").asText()).isEqualTo("Password is wrong");
 
-    TokenPair admin = login("admin@carcare.local", "admin213");
+    TokenPair admin = login("admin@carcare.local", "admin123");
     String employeeEmail = "employee-" + UUID.randomUUID() + "@carcare.test";
 
     JsonNode createdUser = post("/api/admin/users", admin, Map.of(
@@ -103,7 +103,7 @@ class CarcarePostgresIntegrationTest {
 
   @Test
   void implementedOperationalCrudWorksAgainstPostgres() throws Exception {
-    TokenPair admin = login("admin@carcare.local", "admin213");
+    TokenPair admin = login("admin@carcare.local", "admin123");
     String suffix = UUID.randomUUID().toString().substring(0, 8);
 
     long customerId = createAndReadId("/api/customers", admin, Map.of(

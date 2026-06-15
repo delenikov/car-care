@@ -11,7 +11,7 @@ import { customersApi, offersApi } from '../api/modules';
 import { FormTextField } from '../components/FormTextField';
 import { EmptyState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
-import type { Customer, OfferPart, Vehicle } from '../types';
+import type { Customer, Offer, OfferPart, Vehicle } from '../types';
 import { downloadBlob } from '../utils/download';
 
 const partSchema = z.object({
@@ -92,90 +92,92 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
     return (
       <Stack spacing={3}>
         <Typography variant="h2">{t('createOffer')}</Typography>
-        <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
-            <Controller
-              control={control}
-              name="customerId"
-              render={({ field, fieldState }) => {
-                const customers = customersQuery.data ?? [];
-                const selectedCustomer = customers.find((customer) => String(customer.id) === field.value) ?? null;
-                return (
-                  <Autocomplete
-                    options={customers}
-                    value={selectedCustomer}
-                    loading={customersQuery.isLoading}
-                    getOptionLabel={customerLabel}
-                    isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
-                    onChange={(_, value) => {
-                      field.onChange(value ? String(value.id) : '');
-                      setValue('vehicleId', '');
-                      clearErrors('customerId');
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label={t('customer')}
-                        inputRef={field.ref}
-                        error={Boolean(fieldState.error)}
-                        helperText={fieldState.error?.message}
-                        InputProps={{
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {customersQuery.isLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                              {params.InputProps.endAdornment}
-                            </>
-                          )
+        <Box component="form" onSubmit={onSubmit} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' }, gap: 3, alignItems: 'start' }}>
+          <Paper sx={{ p: { xs: 3, md: 4 } }}>
+            <Stack spacing={3}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
+                <Controller
+                  control={control}
+                  name="customerId"
+                  render={({ field, fieldState }) => {
+                    const customers = customersQuery.data ?? [];
+                    const selectedCustomer = customers.find((customer) => String(customer.id) === field.value) ?? null;
+                    return (
+                      <Autocomplete
+                        options={customers}
+                        value={selectedCustomer}
+                        loading={customersQuery.isLoading}
+                        getOptionLabel={customerLabel}
+                        isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                        onChange={(_, value) => {
+                          field.onChange(value ? String(value.id) : '');
+                          setValue('vehicleId', '');
+                          clearErrors('customerId');
                         }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label={t('customer')}
+                            inputRef={field.ref}
+                            error={Boolean(fieldState.error)}
+                            helperText={fieldState.error?.message}
+                            InputProps={{
+                              ...params.InputProps,
+                              endAdornment: (
+                                <>
+                                  {customersQuery.isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                  {params.InputProps.endAdornment}
+                                </>
+                              )
+                            }}
+                          />
+                        )}
                       />
-                    )}
-                  />
-                );
-              }}
-            />
-            <Controller
-              control={control}
-              name="vehicleId"
-              render={({ field, fieldState }) => {
-                const vehicles = vehiclesQuery.data ?? [];
-                const selectedVehicle = vehicles.find((vehicle) => String(vehicle.id) === field.value) ?? null;
-                return (
-                  <Autocomplete
-                    options={vehicles}
-                    value={selectedVehicle}
-                    loading={vehiclesQuery.isLoading}
-                    disabled={!selectedCustomerId}
-                    getOptionLabel={vehicleLabel}
-                    isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
-                    onChange={(_, value) => {
-                      field.onChange(value ? String(value.id) : '');
-                      clearErrors('vehicleId');
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label={t('vehicle')}
-                        inputRef={field.ref}
-                        error={Boolean(fieldState.error)}
-                        helperText={fieldState.error?.message ?? (!selectedCustomerId ? t('selectCustomerFirst') : undefined)}
-                        InputProps={{
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {vehiclesQuery.isLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                              {params.InputProps.endAdornment}
-                            </>
-                          )
+                    );
+                  }}
+                />
+                <Controller
+                  control={control}
+                  name="vehicleId"
+                  render={({ field, fieldState }) => {
+                    const vehicles = vehiclesQuery.data ?? [];
+                    const selectedVehicle = vehicles.find((vehicle) => String(vehicle.id) === field.value) ?? null;
+                    return (
+                      <Autocomplete
+                        options={vehicles}
+                        value={selectedVehicle}
+                        loading={vehiclesQuery.isLoading}
+                        disabled={!selectedCustomerId}
+                        getOptionLabel={vehicleLabel}
+                        isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                        onChange={(_, value) => {
+                          field.onChange(value ? String(value.id) : '');
+                          clearErrors('vehicleId');
                         }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label={t('vehicle')}
+                            inputRef={field.ref}
+                            error={Boolean(fieldState.error)}
+                            helperText={fieldState.error?.message ?? (!selectedCustomerId ? t('selectCustomerFirst') : undefined)}
+                            InputProps={{
+                              ...params.InputProps,
+                              endAdornment: (
+                                <>
+                                  {vehiclesQuery.isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                  {params.InputProps.endAdornment}
+                                </>
+                              )
+                            }}
+                          />
+                        )}
                       />
-                    )}
-                  />
-                );
-              }}
-            />
-            <FormTextField control={control} name="title" label={t('title')} sx={{ gridColumn: { md: '1 / -1' } }} />
-            <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+                    );
+                  }}
+                />
+              </Box>
+              <FormTextField control={control} name="title" label={t('title')} />
               <Stack spacing={2}>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }}>
                   <Typography variant="h4">{t('parts')}</Typography>
@@ -198,12 +200,15 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
                 ) : (
                   <Typography color="text.secondary">{t('noOfferParts')}</Typography>
                 )}
-                <Divider />
-                <Typography fontWeight={700}>{t('partsTotal', { amount: partsCost.toLocaleString('mk-MK') })}</Typography>
               </Stack>
-            </Box>
-            <FormTextField control={control} name="laborCost" label={t('laborCost')} type="number" />
-            <Stack spacing={1.5}>
+            </Stack>
+          </Paper>
+          <Paper sx={{ p: { xs: 3, md: 4 }, position: { lg: 'sticky' }, top: { lg: 24 } }}>
+            <Stack spacing={2}>
+              <Typography variant="h4">{t('priceBreakdown')}</Typography>
+              <FormTextField control={control} name="laborCost" label={t('laborCost')} type="number" />
+              <Divider />
+              <Typography fontWeight={700}>{t('partsTotal', { amount: partsCost.toLocaleString('mk-MK') })}</Typography>
               {selectedCustomerId && loyaltyQuery.data ? (
                 <Alert severity={loyaltyQuery.data.loyal ? 'success' : 'info'}>
                   {loyaltyQuery.data.loyal
@@ -211,15 +216,15 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
                     : t('loyalCustomerProgress', { count: loyaltyQuery.data.completedServices, required: loyaltyQuery.data.requiredServices })}
                 </Alert>
               ) : null}
-              <TextField label={t('subtotal')} value={`${subtotalCost.toLocaleString('mk-MK')} den.`} InputProps={{ readOnly: true }} />
-              <TextField label={t('discount')} value={`-${discountAmount.toLocaleString('mk-MK')} den. (${discountPercent.toLocaleString('mk-MK')}%)`} InputProps={{ readOnly: true }} />
-              <TextField label={t('total')} value={`${totalCost.toLocaleString('mk-MK')} den.`} InputProps={{ readOnly: true }} />
+              <TextField label={t('subtotal')} value={`${subtotalCost.toLocaleString('mk-MK')} ден.`} InputProps={{ readOnly: true }} />
+              <TextField label={t('discount')} value={`-${discountAmount.toLocaleString('mk-MK')} ден. (${discountPercent.toLocaleString('mk-MK')}%)`} InputProps={{ readOnly: true }} />
+              <TextField label={t('total')} value={`${totalCost.toLocaleString('mk-MK')} ден.`} InputProps={{ readOnly: true }} />
+              <Button type="submit" variant="contained" disabled={formState.isSubmitting || createMutation.isPending}>
+                {t('saveAndSend')}
+              </Button>
             </Stack>
-          </Box>
-          <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting || createMutation.isPending}>
-            {t('saveAndSend')}
-          </Button>
-        </Paper>
+          </Paper>
+        </Box>
       </Stack>
     );
   }
@@ -233,7 +238,9 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
           <Box>
             <Typography variant="h2">{offer.title}</Typography>
-            <Typography color="text.secondary">{offer.total.toLocaleString('mk-MK')} den.</Typography>
+            <Typography color="text.secondary">
+              {offer.customerName ?? offer.customerId} - {offerVehicleLabel(offer)}
+            </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
             <Button
@@ -262,14 +269,14 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         </Stack>
         <Paper sx={{ p: { xs: 3, md: 4 } }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-            <OfferField label={t('customer')} value={offer.customerId} />
-            <OfferField label={t('vehicle')} value={offer.vehicleId ?? '-'} />
-            <OfferField label={t('partsCost')} value={`${offer.partsCost.toLocaleString('mk-MK')} den.`} />
-            <OfferField label={t('laborCost')} value={`${offer.laborCost.toLocaleString('mk-MK')} den.`} />
-            <OfferField label={t('subtotal')} value={`${offer.subtotal.toLocaleString('mk-MK')} den.`} />
-            <OfferField label={t('discount')} value={`-${offer.discountAmount.toLocaleString('mk-MK')} den. (${offer.discountPercent.toLocaleString('mk-MK')}%)`} />
+            <OfferField label={t('customer')} value={offer.customerName ?? offer.customerId} />
+            <OfferField label={t('vehicle')} value={offerVehicleLabel(offer)} />
+            <OfferField label={t('partsCost')} value={`${offer.partsCost.toLocaleString('mk-MK')} ден.`} />
+            <OfferField label={t('laborCost')} value={`${offer.laborCost.toLocaleString('mk-MK')} ден.`} />
+            <OfferField label={t('subtotal')} value={`${offer.subtotal.toLocaleString('mk-MK')} ден.`} />
+            <OfferField label={t('discount')} value={`-${offer.discountAmount.toLocaleString('mk-MK')} ден. (${offer.discountPercent.toLocaleString('mk-MK')}%)`} />
             <OfferField label={t('status')} value={offer.status} />
-            <OfferField label={t('total')} value={`${offer.total.toLocaleString('mk-MK')} den.`} />
+            <OfferField label={t('total')} value={`${offer.total.toLocaleString('mk-MK')} ден.`} />
           </Box>
         </Paper>
         <Paper sx={{ p: { xs: 3, md: 4 } }}>
@@ -288,7 +295,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
                 {offer.parts.map((part) => (
                   <TableRow key={`${part.name}-${part.price}`}>
                     <TableCell>{part.name}</TableCell>
-                    <TableCell align="right">{part.price.toLocaleString('mk-MK')} den.</TableCell>
+                    <TableCell align="right">{part.price.toLocaleString('mk-MK')} ден.</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -308,7 +315,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
         <Typography variant="h2">{t('offers')}</Typography>
-        <Button component={RouterLink} to="/offers/new" variant="contained">
+        <Button component={RouterLink} to="/offers/new" variant="contained" startIcon={<AddRoundedIcon />}>
           {t('createOffer')}
         </Button>
       </Stack>
@@ -330,14 +337,14 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
               {offers.map((offer) => (
                 <TableRow key={offer.id} hover component={RouterLink} to={`/offers/${offer.id}`} sx={{ cursor: 'pointer' }}>
                   <TableCell>{offer.title}</TableCell>
-                  <TableCell>{offer.customerId}</TableCell>
+                  <TableCell>{offer.customerName ?? offer.customerId}</TableCell>
                   <TableCell>
                     <Chip label={offer.status} color={offer.status === 'SENT' ? 'secondary' : 'default'} size="small" />
                   </TableCell>
-                  <TableCell align="right">{offer.partsCost.toLocaleString('mk-MK')} den.</TableCell>
-                  <TableCell align="right">{offer.laborCost.toLocaleString('mk-MK')} den.</TableCell>
-                  <TableCell align="right">-{offer.discountAmount.toLocaleString('mk-MK')} den.</TableCell>
-                  <TableCell align="right">{offer.total.toLocaleString('mk-MK')} den.</TableCell>
+                  <TableCell align="right">{offer.partsCost.toLocaleString('mk-MK')} ден.</TableCell>
+                  <TableCell align="right">{offer.laborCost.toLocaleString('mk-MK')} ден.</TableCell>
+                  <TableCell align="right">-{offer.discountAmount.toLocaleString('mk-MK')} ден.</TableCell>
+                  <TableCell align="right">{offer.total.toLocaleString('mk-MK')} ден.</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -371,4 +378,8 @@ function customerLabel(customer: Customer) {
 
 function vehicleLabel(vehicle: Vehicle) {
   return `${vehicle.plate} - ${vehicle.make} ${vehicle.model}`;
+}
+
+function offerVehicleLabel(offer: Offer) {
+  return [offer.vehiclePlate, offer.vehicleName].filter(Boolean).join(' - ') || offer.vehicleId || '-';
 }

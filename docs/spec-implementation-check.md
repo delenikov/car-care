@@ -31,7 +31,6 @@ The remaining gaps are non-functional/architecture concerns, including real SMTP
 - Service record create/list with service type, mileage, replaced parts, parts cost, labor cost, calculated total, customer history, and vehicle history.
 - Offer create/list/detail with parts/labor/subtotal/discount/total breakdown, automatic loyal-customer discount, send email workflow, and PDF export.
 - Service document metadata create/list/detail with automatic generation after service-record creation, send email workflow, and PDF export.
-- Basic loyalty rule create/list.
 - Dashboard summary counts.
 - Flyway baseline migrations.
 - Macedonian i18n resources exist in the frontend.

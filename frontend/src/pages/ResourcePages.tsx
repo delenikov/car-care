@@ -24,6 +24,7 @@ import {
 import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
@@ -112,7 +113,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
   if (mode === 'list') {
     if (listQuery.isLoading) return <LoadingState />;
     return (
-      <ResourceFrame title={t('customers')} actionLabel={t('create')} actionTo="/customers/new">
+      <ResourceFrame title={t('customers')} actionLabel={t('newCustomer')} actionTo="/customers/new" actionIcon={<AddRoundedIcon />}>
         <Paper sx={{ p: 2 }}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -257,7 +258,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
       setSubmittedSearchTerm('');
     };
     return (
-      <ResourceFrame title={t('vehicles')} actionLabel={t('create')} actionTo="/vehicles/new">
+      <ResourceFrame title={t('vehicles')} actionLabel={t('newVehicle')} actionTo="/vehicles/new" actionIcon={<AddRoundedIcon />}>
         <Paper sx={{ p: 2 }}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -305,7 +306,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
       <ResourceFrame title={`${detailQuery.data.make} ${detailQuery.data.model}`} actionLabel={t('edit')} actionTo={`/vehicles/${id}/edit`}>
         <Stack spacing={3}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end">
-            <Button component={RouterLink} to={`/services/new?customerId=${detailQuery.data.customerId}&vehicleId=${detailQuery.data.id}`} variant="contained">
+            <Button component={RouterLink} to={`/services/new?customerId=${detailQuery.data.customerId}&vehicleId=${detailQuery.data.id}`} variant="contained" startIcon={<AddRoundedIcon />}>
               {t('newService')}
             </Button>
           </Stack>
@@ -387,13 +388,13 @@ function VehiclePage({ mode }: { mode: Mode }) {
   );
 }
 
-function ResourceFrame({ title, children, actionLabel, actionTo }: { title: string; children: React.ReactNode; actionLabel?: string; actionTo?: string }) {
+function ResourceFrame({ title, children, actionLabel, actionTo, actionIcon }: { title: string; children: React.ReactNode; actionLabel?: string; actionTo?: string; actionIcon?: React.ReactNode }) {
   return (
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
         <Typography variant="h2">{title}</Typography>
         {actionTo && actionLabel ? (
-          <Button component={RouterLink} to={actionTo} variant="contained">
+          <Button component={RouterLink} to={actionTo} variant="contained" startIcon={actionIcon}>
             {actionLabel}
           </Button>
         ) : null}
@@ -542,7 +543,7 @@ function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: 
                 <TableCell>{vehicle.fuelType ?? '-'}</TableCell>
                 <TableCell>{vehicle.engine ?? '-'}</TableCell>
                 <TableCell align="right">
-                  <Button component={RouterLink} to={`/services/new?customerId=${vehicle.customerId}&vehicleId=${vehicle.id}`}>
+                  <Button component={RouterLink} to={`/services/new?customerId=${vehicle.customerId}&vehicleId=${vehicle.id}`} startIcon={<AddRoundedIcon />}>
                     {t('newService')}
                   </Button>
                 </TableCell>
@@ -582,7 +583,7 @@ function ServiceHistory({ records, loading }: { records: ServiceRecord[]; loadin
                 <TableCell>{record.performedAt}</TableCell>
                 <TableCell>{record.summary}</TableCell>
                 <TableCell>{record.mileage.toLocaleString('mk-MK')} km</TableCell>
-                <TableCell align="right">{record.cost.toLocaleString('mk-MK')} den.</TableCell>
+                <TableCell align="right">{record.cost.toLocaleString('mk-MK')} ден.</TableCell>
               </TableRow>
             ))}
           </TableBody>

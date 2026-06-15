@@ -109,7 +109,10 @@ export interface OfferPart {
 export interface Offer {
   id: string;
   customerId: string;
+  customerName?: string;
   vehicleId?: string;
+  vehiclePlate?: string;
+  vehicleName?: string;
   title: string;
   parts: OfferPart[];
   subtotal: number;
@@ -130,11 +133,4 @@ export interface DocumentRecord {
   contentType?: string;
   storageKey?: string;
   uploadedAt: string;
-}
-
-export interface LoyaltyRule {
-  id: string;
-  name: string;
-  pointsPerDenar: number;
-  active: boolean;
 }

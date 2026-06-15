@@ -20,6 +20,7 @@ import com.delenicode.carcare.offer.OfferRepository;
 import com.delenicode.carcare.offer.OfferRequest;
 import com.delenicode.carcare.offer.OfferService;
 import com.delenicode.carcare.offer.OfferStatus;
+import com.delenicode.carcare.vehicle.Vehicle;
 import com.delenicode.carcare.vehicle.VehicleRepository;
 import java.math.BigDecimal;
 import java.util.List;
@@ -107,6 +108,9 @@ class OfferServiceTest {
     var response = offerService.send(20L);
 
     assertThat(response.status()).isEqualTo(OfferStatus.SENT);
+    assertThat(response.customerName()).isEqualTo("Ada Lovelace");
+    assertThat(response.vehiclePlate()).isEqualTo("SK-20");
+    assertThat(response.vehicleName()).isEqualTo("Volkswagen Golf");
     verify(emailService).sendHtml(eq("ada@carcare.test"), eq("Понуда за сервис: Brake inspection"), contains("Brake pads"), contains("Вкупно: 2.000,00 ден."));
   }
 
@@ -133,6 +137,7 @@ class OfferServiceTest {
     Offer offer = new Offer();
     offer.setId(20L);
     offer.setCustomer(customer());
+    offer.setVehicle(vehicle());
     offer.setTitle("Brake inspection");
     offer.setDescription("Inspect brakes");
     offer.setPartsCost(new BigDecimal("1200.00"));
@@ -149,5 +154,15 @@ class OfferServiceTest {
     part.setPosition(0);
     offer.getParts().add(part);
     return offer;
+  }
+
+  private Vehicle vehicle() {
+    Vehicle vehicle = new Vehicle();
+    vehicle.setId(30L);
+    vehicle.setCustomer(customer());
+    vehicle.setPlateNumber("SK-20");
+    vehicle.setMake("Volkswagen");
+    vehicle.setModel("Golf");
+    return vehicle;
   }
 }

@@ -95,7 +95,7 @@ public class OfferService {
   @Transactional(readOnly = true)
   public byte[] exportPdf(Long id) {
     Offer offer = offers.findById(id).orElseThrow(() -> new IllegalArgumentException("Offer not found"));
-    return pdfService.renderServiceSummary("Quotation: " + offer.getTitle(), offerBody(offer));
+    return pdfService.renderServiceSummary("Понуда за сервис: " + offer.getTitle(), offerBody(offer));
   }
 
   public OfferResponse toResponse(Offer offer) {
@@ -104,7 +104,10 @@ public class OfferService {
     return new OfferResponse(
         offer.getId(),
         offer.getCustomer().getId(),
+        offer.getCustomer().getFullName(),
         vehicle == null ? null : vehicle.getId(),
+        vehicle == null ? null : vehicle.getPlateNumber(),
+        vehicle == null ? null : vehicle.getMake() + " " + vehicle.getModel(),
         offer.getTitle(),
         offer.getDescription(),
         parts,
