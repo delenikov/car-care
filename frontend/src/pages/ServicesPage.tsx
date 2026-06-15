@@ -290,20 +290,54 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
             </Button>
           </Stack>
         </Stack>
-        <Paper sx={{ p: { xs: 3, md: 4 } }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-            <ServiceField label={t('customer')} value={record.customerName ?? record.customerId} />
-            <ServiceField label={t('vehicle')} value={serviceVehicleLabel(record)} />
-            <ServiceField label={t('serviceDate')} value={record.performedAt} />
-            <ServiceField label={t('serviceType')} value={record.summary} />
-            <ServiceField label={t('mileage')} value={`${record.mileage.toLocaleString('mk-MK')} km`} />
-            <ServiceField label={t('replacedParts')} value={record.replacedParts || '-'} wide />
-            <ServiceField label={t('partsCost')} value={`${record.partsCost.toLocaleString('mk-MK')} ден.`} />
-            <ServiceField label={t('laborCost')} value={`${record.laborCost.toLocaleString('mk-MK')} ден.`} />
-            <ServiceField label={t('total')} value={`${record.cost.toLocaleString('mk-MK')} ден.`} />
-            <ServiceField label={t('notes')} value={record.notes || '-'} wide />
-          </Box>
-        </Paper>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' }, gap: 3, alignItems: 'start' }}>
+          <Stack spacing={3}>
+            <Paper sx={{ p: { xs: 3, md: 4 } }}>
+              <Typography variant="h3" sx={{ mb: 2 }}>
+                {t('customer')} / {t('vehicle')}
+              </Typography>
+              <Stack spacing={1.5}>
+                <DetailRow label={t('customer')} value={record.customerName ?? record.customerId} />
+                <DetailRow label={t('vehicle')} value={serviceVehicleLabel(record)} />
+              </Stack>
+            </Paper>
+            <Paper sx={{ p: { xs: 3, md: 4 } }}>
+              <Typography variant="h3" sx={{ mb: 2 }}>
+                {t('service')}
+              </Typography>
+              <Stack spacing={1.5}>
+                <DetailRow label={t('serviceDate')} value={record.performedAt} />
+                <DetailRow label={t('serviceType')} value={record.summary} />
+                <DetailRow label={t('mileage')} value={`${record.mileage.toLocaleString('mk-MK')} km`} />
+              </Stack>
+            </Paper>
+            <Paper sx={{ p: { xs: 3, md: 4 } }}>
+              <Typography variant="h3" sx={{ mb: 2 }}>
+                {t('replacedParts')}
+              </Typography>
+              <Typography sx={{ overflowWrap: 'anywhere' }}>{record.replacedParts || '-'}</Typography>
+            </Paper>
+            {record.notes ? (
+              <Paper sx={{ p: { xs: 3, md: 4 } }}>
+                <Typography variant="h3" sx={{ mb: 2 }}>
+                  {t('notes')}
+                </Typography>
+                <Typography sx={{ overflowWrap: 'anywhere' }}>{record.notes}</Typography>
+              </Paper>
+            ) : null}
+          </Stack>
+          <Paper sx={{ p: { xs: 3, md: 4 }, position: { lg: 'sticky' }, top: { lg: 24 } }}>
+            <Typography variant="h3" sx={{ mb: 2 }}>
+              {t('priceBreakdown')}
+            </Typography>
+            <Stack spacing={1.5}>
+              <CostRow label={t('partsCost')} value={`${record.partsCost.toLocaleString('mk-MK')} ден.`} />
+              <CostRow label={t('laborCost')} value={`${record.laborCost.toLocaleString('mk-MK')} ден.`} />
+              <Divider />
+              <CostRow label={t('total')} value={`${record.cost.toLocaleString('mk-MK')} ден.`} strong />
+            </Stack>
+          </Paper>
+        </Box>
       </Stack>
     );
   }
@@ -355,15 +389,24 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
   );
 }
 
-function ServiceField({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2, gridColumn: wide ? { md: '1 / -1' } : undefined }}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 1, borderBottom: 1, borderColor: 'divider' }}>
       <Typography variant="body2" color="text.secondary">
         {label}
       </Typography>
-      <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
+      <Typography fontWeight={700} textAlign="right" sx={{ overflowWrap: 'anywhere' }}>
         {value}
       </Typography>
+    </Box>
+  );
+}
+
+function CostRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+      <Typography fontWeight={strong ? 800 : 500}>{label}</Typography>
+      <Typography fontWeight={strong ? 800 : 700}>{value}</Typography>
     </Box>
   );
 }

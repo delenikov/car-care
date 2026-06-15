@@ -267,43 +267,61 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
             </Button>
           </Stack>
         </Stack>
-        <Paper sx={{ p: { xs: 3, md: 4 } }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
-            <OfferField label={t('customer')} value={offer.customerName ?? offer.customerId} />
-            <OfferField label={t('vehicle')} value={offerVehicleLabel(offer)} />
-            <OfferField label={t('partsCost')} value={`${offer.partsCost.toLocaleString('mk-MK')} ден.`} />
-            <OfferField label={t('laborCost')} value={`${offer.laborCost.toLocaleString('mk-MK')} ден.`} />
-            <OfferField label={t('subtotal')} value={`${offer.subtotal.toLocaleString('mk-MK')} ден.`} />
-            <OfferField label={t('discount')} value={`-${offer.discountAmount.toLocaleString('mk-MK')} ден. (${offer.discountPercent.toLocaleString('mk-MK')}%)`} />
-            <OfferField label={t('status')} value={offer.status} />
-            <OfferField label={t('total')} value={`${offer.total.toLocaleString('mk-MK')} ден.`} />
-          </Box>
-        </Paper>
-        <Paper sx={{ p: { xs: 3, md: 4 } }}>
-          <Typography variant="h3" sx={{ mb: 2 }}>
-            {t('parts')}
-          </Typography>
-          {offer.parts.length ? (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('partName')}</TableCell>
-                  <TableCell align="right">{t('price')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {offer.parts.map((part) => (
-                  <TableRow key={`${part.name}-${part.price}`}>
-                    <TableCell>{part.name}</TableCell>
-                    <TableCell align="right">{part.price.toLocaleString('mk-MK')} ден.</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <Typography color="text.secondary">{t('noOfferParts')}</Typography>
-          )}
-        </Paper>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' }, gap: 3, alignItems: 'start' }}>
+          <Stack spacing={3}>
+            <Paper sx={{ p: { xs: 3, md: 4 } }}>
+              <Typography variant="h3" sx={{ mb: 2 }}>
+                {t('customer')} / {t('vehicle')}
+              </Typography>
+              <Stack spacing={1.5}>
+                <DetailRow label={t('customer')} value={offer.customerName ?? offer.customerId} />
+                <DetailRow label={t('vehicle')} value={offerVehicleLabel(offer)} />
+                <DetailRow label={t('status')} value={offer.status} />
+              </Stack>
+            </Paper>
+            <Paper sx={{ p: { xs: 3, md: 4 } }}>
+              <Typography variant="h3" sx={{ mb: 2 }}>
+                {t('parts')}
+              </Typography>
+              {offer.parts.length ? (
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>{t('partName')}</TableCell>
+                      <TableCell align="right">{t('price')}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {offer.parts.map((part) => (
+                      <TableRow key={`${part.name}-${part.price}`}>
+                        <TableCell>{part.name}</TableCell>
+                        <TableCell align="right">{part.price.toLocaleString('mk-MK')} ден.</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Typography color="text.secondary">{t('noOfferParts')}</Typography>
+              )}
+            </Paper>
+          </Stack>
+          <Paper sx={{ p: { xs: 3, md: 4 }, position: { lg: 'sticky' }, top: { lg: 24 } }}>
+            <Typography variant="h3" sx={{ mb: 2 }}>
+              {t('priceBreakdown')}
+            </Typography>
+            <Stack spacing={1.5}>
+              <CostRow label={t('partsCost')} value={`${offer.partsCost.toLocaleString('mk-MK')} ден.`} />
+              <CostRow label={t('laborCost')} value={`${offer.laborCost.toLocaleString('mk-MK')} ден.`} />
+              <Divider />
+              <CostRow label={t('subtotal')} value={`${offer.subtotal.toLocaleString('mk-MK')} ден.`} />
+              {offer.discountAmount > 0 ? (
+                <CostRow label={t('discount')} value={`-${offer.discountAmount.toLocaleString('mk-MK')} ден. (${offer.discountPercent.toLocaleString('mk-MK')}%)`} />
+              ) : null}
+              <Divider />
+              <CostRow label={t('total')} value={`${offer.total.toLocaleString('mk-MK')} ден.`} strong />
+            </Stack>
+          </Paper>
+        </Box>
       </Stack>
     );
   }
@@ -357,13 +375,24 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
   );
 }
 
-function OfferField({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 1, borderBottom: 1, borderColor: 'divider' }}>
       <Typography variant="body2" color="text.secondary">
         {label}
       </Typography>
-      <Typography fontWeight={700}>{value}</Typography>
+      <Typography fontWeight={700} textAlign="right" sx={{ overflowWrap: 'anywhere' }}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
+
+function CostRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+      <Typography fontWeight={strong ? 800 : 500}>{label}</Typography>
+      <Typography fontWeight={strong ? 800 : 700}>{value}</Typography>
     </Box>
   );
 }
