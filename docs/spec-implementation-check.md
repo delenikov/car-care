@@ -1,6 +1,6 @@
 # Spec Implementation Check
 
-Date: 2026-06-14
+Date: 2026-06-15
 
 Scope checked:
 
@@ -11,9 +11,9 @@ Note: no `sds.md` file exists in this repository. This check treats `docs/srs.md
 
 ## Summary
 
-FR-1 through FR-42 from `docs/srs.md` are implemented on the backend and frontend and are covered by unit tests, PostgreSQL Testcontainers integration tests, and Playwright e2e tests.
+FR-1 through FR-44 from `docs/srs.md` are implemented on the backend and frontend and are covered by unit tests, PostgreSQL Testcontainers integration tests, and Playwright e2e tests.
 
-The remaining gaps are outside FR-1 through FR-42 or are non-functional/architecture concerns, including FR-43 and FR-44 loyalty automation, real SMTP transport configuration, binary object storage, `/api/v1` endpoint versioning, UUID identifiers, pagination, and audit-field expansion.
+The remaining gaps are non-functional/architecture concerns, including real SMTP transport configuration, binary object storage, `/api/v1` endpoint versioning, UUID identifiers, pagination, and audit-field expansion.
 
 ## Implemented Or Mostly Implemented
 
@@ -29,7 +29,7 @@ The remaining gaps are outside FR-1 through FR-42 or are non-functional/architec
 - Vehicle create/update/list/detail, customer association, and VIN/license-plate/owner search.
 - Appointment list/calendar, 08:00-16:00 availability slots, staff scheduling, public customer booking with vehicle VIN/engine/fuel details, conflict prevention, 24-hour cancellation links, confirmation emails, one-day reminder emails, cancellation confirmation page, cancellation endpoint, and rescheduling.
 - Service record create/list with service type, mileage, replaced parts, parts cost, labor cost, calculated total, customer history, and vehicle history.
-- Offer create/list/detail with parts/labor/total breakdown, send email workflow, and PDF export.
+- Offer create/list/detail with parts/labor/subtotal/discount/total breakdown, automatic loyal-customer discount, send email workflow, and PDF export.
 - Service document metadata create/list/detail with automatic generation after service-record creation, send email workflow, and PDF export.
 - Basic loyalty rule create/list.
 - Dashboard summary counts.
@@ -56,10 +56,10 @@ The remaining gaps are outside FR-1 through FR-42 or are non-functional/architec
 
 ### Loyalty And Discount
 
-- Repeat-customer identification is missing.
-- Visit frequency tracking is missing.
-- Automatic discount calculation is missing.
-- Discount application to quotations is missing.
+- Customers with at least 5 completed service records are identified as loyal customers.
+- Loyal customers receive a backend-calculated 10% discount on future quotations.
+- The frontend displays loyalty status, applied discount, and final discounted total while creating offers.
+- Visit frequency analytics beyond completed-service counting are not implemented.
 
 ### Non-Functional And Architecture
 
@@ -86,7 +86,7 @@ The remaining gaps are outside FR-1 through FR-42 or are non-functional/architec
 - Unit tests for vehicle create, update, customer reassignment, duplicate plate rejection, and VIN/license-plate/owner search routing.
 - Unit tests for service-record parts/labor total calculation, backward-compatible total handling, customer/vehicle ownership validation, and vehicle history lookup.
 - Unit tests for appointment available slots, business-hour validation, public booking with full vehicle details, conflict prevention, Macedonian HTML confirmation email, 24-hour cancellation expiry, cancellation-info lookup, cancellation invalidation, and reminder de-duplication.
-- Unit tests for offer parts/labor total calculation, quote email sending, and PDF export delegation.
+- Unit tests for loyal-customer identification, offer parts/labor total calculation, loyal-customer discount application, quote email sending, and PDF export delegation.
 - Unit tests for generated service-document metadata, service-document email sending, service-document PDF export delegation, and PDF byte rendering.
 - PostgreSQL Testcontainers integration tests for:
   - Login, admin user creation/update/delete, RBAC, password change, refresh-token revocation, logout revocation.
@@ -100,7 +100,7 @@ The remaining gaps are outside FR-1 through FR-42 or are non-functional/architec
   - Vehicle VIN/license-plate/owner search, vehicle create DTO mapping, and vehicle update DTO mapping.
   - Service-record creation with service type, mileage, replaced parts, parts/labor cost breakdown, and calculated total.
   - Appointment available-slot display, staff scheduling DTO mapping, public appointment booking, and cancellation confirmation before final cancellation.
-  - Offer creation with parts/labor breakdown and quote send action.
+  - Offer creation with parts/labor breakdown, loyal-customer discount preview, and quote send action.
   - Quote PDF export action.
   - Generated service-document PDF export and send actions.
   - Admin employee create/update/disable.

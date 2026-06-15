@@ -85,6 +85,13 @@ async function mockBackend(page: Page) {
       });
       return;
     }
+    if (pathname.endsWith('/loyalty-status')) {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(ok({ customerId: '101', completedServices: 4, requiredServices: 5, loyal: false, discountPercent: 0 }))
+      });
+      return;
+    }
     if (request.method() === 'DELETE') {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(ok(null, 'Deleted')) });
       return;
@@ -651,8 +658,8 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   let deletedAppointmentId = '';
   let availableUrl = '';
   let appointmentRows = [
-    { id: 301, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-14T09:00:00.000Z', endsAt: '2026-06-14T10:00:00.000Z', serviceType: 'Oil change', status: 'SCHEDULED' },
-    { id: 304, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-14T11:00:00.000Z', endsAt: '2026-06-14T12:00:00.000Z', serviceType: 'Cancelled check', status: 'CANCELLED' }
+    { id: 301, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-15T09:00:00+02:00', endsAt: '2026-06-15T10:00:00+02:00', serviceType: 'Oil change', status: 'SCHEDULED' },
+    { id: 304, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-15T11:00:00+02:00', endsAt: '2026-06-15T12:00:00+02:00', serviceType: 'Cancelled check', status: 'CANCELLED' }
   ];
 
   await page.route('**/api/appointments/available**', async (route) => {
@@ -730,10 +737,10 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   await expect(page.getByText('Терминот мора да биде во работно време од 08:00 до 16:00.').first()).toBeVisible();
   expect(appointmentPayload).toBeUndefined();
 
-  await fillDatePickerGroup(page, 'Почеток датум', '14.06.2026');
-  await fillTimePickerGroup(page, 'Почеток време', '11:30');
-  await fillDatePickerGroup(page, 'Крај датум', '14.06.2026');
-  await fillTimePickerGroup(page, 'Крај време', '12:30');
+  await fillDatePickerGroup(page, 'Почеток датум', '15.06.2026');
+  await fillTimePickerGroup(page, 'Почеток време', '09:30');
+  await fillDatePickerGroup(page, 'Крај датум', '15.06.2026');
+  await fillTimePickerGroup(page, 'Крај време', '10:30');
   await page.locator('button[type="submit"]').click();
   await expect(page.getByText('Терминот се преклопува со постоечки термин.').first()).toBeVisible();
   expect(appointmentPayload).toBeUndefined();
@@ -905,6 +912,13 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
     });
   });
 
+  await page.route('**/api/customers/*/loyalty-status', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(ok({ customerId: '101', completedServices: 5, requiredServices: 5, loyal: true, discountPercent: 10 }))
+    });
+  });
+
   await page.route('**/api/offers', async (route) => {
     const request = route.request();
     if (request.method() === 'POST') {
@@ -913,13 +927,13 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
       offerParts = offerPayload.parts as Array<{ name: string; price: number }>;
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '502', ...offerPayload, amount: 1200, status: offerStatus }))
+        body: JSON.stringify(ok({ id: '502', ...offerPayload, subtotalAmount: 1200, discountPercent: 10, discountAmount: 120, amount: 1080, status: offerStatus }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '501', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: [{ name: 'Brake pads', price: 700 }], partsCost: 700, laborCost: 500, amount: 1200, status: 'DRAFT' }]))
+      body: JSON.stringify(ok([{ id: '501', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: [{ name: 'Brake pads', price: 700 }], partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 0, discountAmount: 0, amount: 1200, status: 'DRAFT' }]))
     });
   });
 
@@ -935,13 +949,13 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
       sendCalled = true;
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, amount: 1200, status: offerStatus }))
+        body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 10, discountAmount: 120, amount: 1080, status: offerStatus }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, amount: 1200, status: offerStatus }))
+      body: JSON.stringify(ok({ id: '502', customerId: '101', vehicleId: '201', title: 'Brake inspection', parts: offerParts, partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 10, discountAmount: 120, amount: 1080, status: offerStatus }))
     });
   });
 
@@ -958,6 +972,9 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
   await page.locator('input[name="parts.0.name"]').fill('Brake pads');
   await page.locator('input[name="parts.0.price"]').fill('700');
   await page.locator('input[name="laborCost"]').fill('500');
+  await expect(page.getByText(/10%/)).toBeVisible();
+  await expect(page.locator('input[value="-120 den. (10%)"]')).toBeVisible();
+  await expect(page.locator('input[value="1,080 den."]')).toBeVisible();
   await expect(page.getByText(/Вкупно делови: 700 ден\./)).toBeVisible();
   await page.locator('button[type="submit"]').click();
 

@@ -32,6 +32,14 @@ export interface Customer {
   notes?: string;
 }
 
+export interface CustomerLoyaltyStatus {
+  customerId: string;
+  completedServices: number;
+  requiredServices: number;
+  loyal: boolean;
+  discountPercent: number;
+}
+
 export interface Vehicle {
   id: string;
   customerId: string;
@@ -104,6 +112,9 @@ export interface Offer {
   vehicleId?: string;
   title: string;
   parts: OfferPart[];
+  subtotal: number;
+  discountPercent: number;
+  discountAmount: number;
   total: number;
   partsCost: number;
   laborCost: number;

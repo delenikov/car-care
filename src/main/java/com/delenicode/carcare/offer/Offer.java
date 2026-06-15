@@ -46,6 +46,15 @@ public class Offer extends BaseEntity {
   private BigDecimal amount;
 
   @Column(nullable = false, precision = 12, scale = 2)
+  private BigDecimal subtotalAmount;
+
+  @Column(nullable = false, precision = 5, scale = 2)
+  private BigDecimal discountPercent;
+
+  @Column(nullable = false, precision = 12, scale = 2)
+  private BigDecimal discountAmount;
+
+  @Column(nullable = false, precision = 12, scale = 2)
   private BigDecimal partsCost;
 
   @Column(nullable = false, precision = 12, scale = 2)

@@ -2,12 +2,14 @@ package com.delenicode.carcare.offer;
 
 import com.delenicode.carcare.customer.Customer;
 import com.delenicode.carcare.customer.CustomerRepository;
+import com.delenicode.carcare.loyalty.CustomerLoyaltyService;
 import com.delenicode.carcare.notification.EmailDeliveryResult;
 import com.delenicode.carcare.notification.EmailService;
 import com.delenicode.carcare.notification.PdfService;
 import com.delenicode.carcare.vehicle.Vehicle;
 import com.delenicode.carcare.vehicle.VehicleRepository;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -23,12 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class OfferService {
   private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
   private static final Locale MK_LOCALE = Locale.forLanguageTag("mk-MK");
+  private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
 
   private final OfferRepository offers;
   private final CustomerRepository customers;
   private final VehicleRepository vehicles;
   private final EmailService emailService;
   private final PdfService pdfService;
+  private final CustomerLoyaltyService loyalty;
 
   @Transactional(readOnly = true)
   public List<OfferResponse> findAll() {
@@ -50,6 +54,9 @@ public class OfferService {
     rejectNegative(laborCost, "Labor cost must not be negative");
     Offer offer = new Offer();
     Customer customer = customers.findByIdAndDeletedFalse(request.customerId()).orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+    BigDecimal subtotalAmount = partsCost.add(laborCost);
+    BigDecimal discountPercent = loyalty.discountPercentForCustomer(customer.getId());
+    BigDecimal discountAmount = discountAmount(subtotalAmount, discountPercent);
     offer.setCustomer(customer);
     if (request.vehicleId() != null) {
       Vehicle vehicle = vehicles.findById(request.vehicleId()).filter(existing -> !existing.getCustomer().isDeleted()).orElseThrow(() -> new IllegalArgumentException("Vehicle not found"));
@@ -62,7 +69,10 @@ public class OfferService {
     offer.setDescription(request.description());
     offer.setPartsCost(partsCost);
     offer.setLaborCost(laborCost);
-    offer.setAmount(partsCost.add(laborCost));
+    offer.setSubtotalAmount(subtotalAmount);
+    offer.setDiscountPercent(discountPercent);
+    offer.setDiscountAmount(discountAmount);
+    offer.setAmount(subtotalAmount.subtract(discountAmount));
     offer.setExpiresOn(request.expiresOn());
     for (int index = 0; index < requestedParts.size(); index++) {
       OfferPartRequest requestedPart = requestedParts.get(index);
@@ -91,7 +101,21 @@ public class OfferService {
   public OfferResponse toResponse(Offer offer) {
     Vehicle vehicle = offer.getVehicle();
     List<OfferPartResponse> parts = offer.getParts().stream().map(part -> new OfferPartResponse(part.getName(), part.getPrice())).toList();
-    return new OfferResponse(offer.getId(), offer.getCustomer().getId(), vehicle == null ? null : vehicle.getId(), offer.getTitle(), offer.getDescription(), parts, offer.getPartsCost(), offer.getLaborCost(), offer.getAmount(), offer.getExpiresOn(), offer.getStatus());
+    return new OfferResponse(
+        offer.getId(),
+        offer.getCustomer().getId(),
+        vehicle == null ? null : vehicle.getId(),
+        offer.getTitle(),
+        offer.getDescription(),
+        parts,
+        offer.getPartsCost(),
+        offer.getLaborCost(),
+        subtotalAmount(offer),
+        discountPercent(offer),
+        discountAmount(offer),
+        amount(offer),
+        offer.getExpiresOn(),
+        offer.getStatus());
   }
 
   private String offerBody(Offer offer) {
@@ -106,7 +130,10 @@ public class OfferService {
     }
     body.append("Цена на делови: ").append(formatMoney(offer.getPartsCost())).append("\n");
     body.append("Цена на работа: ").append(formatMoney(offer.getLaborCost())).append("\n");
-    body.append("Вкупно: ").append(formatMoney(offer.getAmount())).append("\n");
+    if (discountAmount(offer).signum() > 0) {
+      body.append("Попуст за лојален клиент (").append(formatPercent(discountPercent(offer))).append("): -").append(formatMoney(discountAmount(offer))).append("\n");
+    }
+    body.append("Вкупно: ").append(formatMoney(amount(offer))).append("\n");
     if (offer.getDescription() != null && !offer.getDescription().isBlank()) {
       body.append("\n").append(offer.getDescription());
     }
@@ -153,6 +180,13 @@ public class OfferService {
     if (value == null || value.signum() < 0) {
       throw new IllegalArgumentException(message);
     }
+  }
+
+  private BigDecimal discountAmount(BigDecimal subtotalAmount, BigDecimal discountPercent) {
+    if (discountPercent == null || discountPercent.signum() <= 0) {
+      return BigDecimal.ZERO.setScale(2);
+    }
+    return subtotalAmount.multiply(discountPercent).divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
   }
 
   private String offerHtmlBody(Offer offer) {
@@ -229,6 +263,7 @@ public class OfferService {
                           <td style="padding:6px 0;font-weight:700;">Цена на работа</td>
                           <td align="right" style="padding:6px 0;">%s</td>
                         </tr>
+                        %s
                       </table>
                       <div style="border-top:2px solid #d9a520;margin:14px 0;"></div>
                       <table role="presentation" width="100%%" cellspacing="0" cellpadding="0">
@@ -256,7 +291,8 @@ public class OfferService {
         vehicleText,
         offerPartRows(offer),
         formatMoney(offer.getLaborCost()),
-        formatMoney(offer.getAmount())
+        discountRows(offer),
+        formatMoney(amount(offer))
     );
   }
 
@@ -288,6 +324,41 @@ public class OfferService {
     format.setMinimumFractionDigits(2);
     format.setMaximumFractionDigits(2);
     return format.format(value) + " ден.";
+  }
+
+  private String formatPercent(BigDecimal value) {
+    NumberFormat format = NumberFormat.getNumberInstance(MK_LOCALE);
+    format.setMinimumFractionDigits(0);
+    format.setMaximumFractionDigits(2);
+    return format.format(value) + "%";
+  }
+
+  private String discountRows(Offer offer) {
+    if (discountAmount(offer).signum() <= 0) {
+      return "";
+    }
+    return """
+        <tr>
+          <td style="padding:6px 0;font-weight:700;color:#166534;">Попуст за лојален клиент (%s)</td>
+          <td align="right" style="padding:6px 0;color:#166534;">-%s</td>
+        </tr>
+        """.formatted(formatPercent(discountPercent(offer)), formatMoney(discountAmount(offer)));
+  }
+
+  private BigDecimal subtotalAmount(Offer offer) {
+    return offer.getSubtotalAmount() == null ? offer.getPartsCost().add(offer.getLaborCost()) : offer.getSubtotalAmount();
+  }
+
+  private BigDecimal discountPercent(Offer offer) {
+    return offer.getDiscountPercent() == null ? BigDecimal.ZERO.setScale(2) : offer.getDiscountPercent();
+  }
+
+  private BigDecimal discountAmount(Offer offer) {
+    return offer.getDiscountAmount() == null ? discountAmount(subtotalAmount(offer), discountPercent(offer)) : offer.getDiscountAmount();
+  }
+
+  private BigDecimal amount(Offer offer) {
+    return offer.getAmount() == null ? subtotalAmount(offer).subtract(discountAmount(offer)) : offer.getAmount();
   }
 
   private String blankToDash(String value) {

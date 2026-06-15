@@ -1,5 +1,5 @@
 import { http, refreshAccessToken, refreshTokenStorage, tokenStorage, unwrap } from './http';
-import type { Appointment, AppointmentCancellationInfo, AppointmentSlot, AuthResponse, Customer, DashboardSummary, DocumentRecord, LoyaltyRule, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
+import type { Appointment, AppointmentCancellationInfo, AppointmentSlot, AuthResponse, Customer, CustomerLoyaltyStatus, DashboardSummary, DocumentRecord, LoyaltyRule, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
 import { skopjeOffsetDateTime } from '../utils/dateTime';
 
 export interface LoginPayload {
@@ -102,8 +102,19 @@ interface BackendOffer {
   parts?: Array<{ name: string; price: number }>;
   partsCost?: number;
   laborCost?: number;
+  subtotalAmount?: number;
+  discountPercent?: number;
+  discountAmount?: number;
   amount: number;
   status: Offer['status'];
+}
+
+interface BackendCustomerLoyaltyStatus {
+  customerId: string | number;
+  completedServices: number;
+  requiredServices: number;
+  loyal: boolean;
+  discountPercent: number;
 }
 
 interface BackendDocument {
@@ -225,6 +236,9 @@ const toOffer = (offer: BackendOffer): Offer => ({
   vehicleId: offer.vehicleId,
   title: offer.title,
   parts: offer.parts ?? [],
+  subtotal: offer.subtotalAmount ?? ((offer.partsCost ?? 0) + (offer.laborCost ?? offer.amount)),
+  discountPercent: offer.discountPercent ?? 0,
+  discountAmount: offer.discountAmount ?? 0,
   total: offer.amount,
   partsCost: offer.partsCost ?? 0,
   laborCost: offer.laborCost ?? offer.amount,
@@ -239,6 +253,14 @@ const toOfferRequest = (offer: Omit<Offer, 'id'>) => ({
   partsCost: offer.partsCost,
   laborCost: offer.laborCost,
   description: undefined
+});
+
+const toCustomerLoyaltyStatus = (status: BackendCustomerLoyaltyStatus): CustomerLoyaltyStatus => ({
+  customerId: String(status.customerId),
+  completedServices: status.completedServices,
+  requiredServices: status.requiredServices,
+  loyal: status.loyal,
+  discountPercent: status.discountPercent
 });
 
 const toDocument = (document: BackendDocument): DocumentRecord => ({
@@ -259,7 +281,8 @@ export const customersApi = {
   update: (id: string, payload: Partial<Omit<Customer, 'id'>>) => unwrap(http.put<BackendCustomer>(`/api/customers/${id}`, toCustomerRequest({ name: '', phone: '', loyaltyPoints: 0, ...payload }))).then(toCustomer),
   remove: (id: string) => unwrap(http.delete<void>(`/api/customers/${id}`)),
   vehicles: (id: string) => unwrap(http.get<BackendVehicle[]>(`/api/customers/${id}/vehicles`)).then((vehicles) => vehicles.map(toVehicle)),
-  serviceHistory: (id: string) => unwrap(http.get<BackendServiceRecord[]>(`/api/customers/${id}/service-history`)).then((records) => records.map(toServiceRecord))
+  serviceHistory: (id: string) => unwrap(http.get<BackendServiceRecord[]>(`/api/customers/${id}/service-history`)).then((records) => records.map(toServiceRecord)),
+  loyaltyStatus: (id: string) => unwrap(http.get<BackendCustomerLoyaltyStatus>(`/api/customers/${id}/loyalty-status`)).then(toCustomerLoyaltyStatus)
 };
 export const vehiclesApi = {
   list: (filters?: { q?: string; vin?: string; plateNumber?: string; owner?: string }) => unwrap(http.get<BackendVehicle[]>('/api/vehicles', { params: filters })).then((vehicles) => vehicles.map(toVehicle)),
@@ -313,7 +336,7 @@ export const offersApi = {
   get: (id: string) => unwrap(http.get<BackendOffer>(`/api/offers/${id}`)).then(toOffer),
   create: (payload: Omit<Offer, 'id'>) => unwrap(http.post<BackendOffer>('/api/offers', toOfferRequest(payload))).then(toOffer),
   update: (id: string, payload: Partial<Omit<Offer, 'id'>>) =>
-    unwrap(http.put<BackendOffer>(`/api/offers/${id}`, toOfferRequest({ customerId: '', title: '', total: 0, parts: [], partsCost: 0, laborCost: 0, status: 'DRAFT', ...payload }))).then(toOffer),
+    unwrap(http.put<BackendOffer>(`/api/offers/${id}`, toOfferRequest({ customerId: '', title: '', subtotal: 0, discountPercent: 0, discountAmount: 0, total: 0, parts: [], partsCost: 0, laborCost: 0, status: 'DRAFT', ...payload }))).then(toOffer),
   remove: (id: string) => unwrap(http.delete<void>(`/api/offers/${id}`)),
   send: (id: string) => unwrap(http.post<BackendOffer>(`/api/offers/${id}/send`, {})).then(toOffer),
   exportPdf: (id: string) => http.get<Blob>(`/api/offers/${id}/pdf`, { responseType: 'blob' })

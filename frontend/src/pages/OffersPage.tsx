@@ -1,7 +1,7 @@
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Autocomplete, Box, Button, Chip, CircularProgress, Divider, IconButton, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { Alert, Autocomplete, Box, Button, Chip, CircularProgress, Divider, IconButton, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -55,9 +55,17 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
     queryFn: () => customersApi.vehicles(selectedCustomerId),
     enabled: mode === 'create' && Boolean(selectedCustomerId)
   });
+  const loyaltyQuery = useQuery({
+    queryKey: ['customers', selectedCustomerId, 'loyalty-status'],
+    queryFn: () => customersApi.loyaltyStatus(selectedCustomerId),
+    enabled: mode === 'create' && Boolean(selectedCustomerId)
+  });
   const partsCost = sumParts(watchedParts);
   const laborCost = Number(watchedLaborCost) || 0;
-  const totalCost = partsCost + laborCost;
+  const subtotalCost = partsCost + laborCost;
+  const discountPercent = loyaltyQuery.data?.discountPercent ?? 0;
+  const discountAmount = loyaltyQuery.data?.loyal ? Math.round((subtotalCost * discountPercent)) / 100 : 0;
+  const totalCost = subtotalCost - discountAmount;
 
   if (mode === 'create') {
     const onSubmit = handleSubmit(async (values) => {
@@ -70,6 +78,9 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         parts,
         partsCost: computedPartsCost,
         laborCost: Number(values.laborCost) || 0,
+        subtotal: computedPartsCost + (Number(values.laborCost) || 0),
+        discountPercent: 0,
+        discountAmount: 0,
         total: computedPartsCost + (Number(values.laborCost) || 0),
         status: 'DRAFT'
       });
@@ -192,7 +203,18 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
               </Stack>
             </Box>
             <FormTextField control={control} name="laborCost" label={t('laborCost')} type="number" />
-            <TextField label={t('total')} value={`${totalCost.toLocaleString('mk-MK')} den.`} InputProps={{ readOnly: true }} />
+            <Stack spacing={1.5}>
+              {selectedCustomerId && loyaltyQuery.data ? (
+                <Alert severity={loyaltyQuery.data.loyal ? 'success' : 'info'}>
+                  {loyaltyQuery.data.loyal
+                    ? t('loyalCustomerDiscount', { count: loyaltyQuery.data.completedServices, percent: loyaltyQuery.data.discountPercent })
+                    : t('loyalCustomerProgress', { count: loyaltyQuery.data.completedServices, required: loyaltyQuery.data.requiredServices })}
+                </Alert>
+              ) : null}
+              <TextField label={t('subtotal')} value={`${subtotalCost.toLocaleString('mk-MK')} den.`} InputProps={{ readOnly: true }} />
+              <TextField label={t('discount')} value={`-${discountAmount.toLocaleString('mk-MK')} den. (${discountPercent.toLocaleString('mk-MK')}%)`} InputProps={{ readOnly: true }} />
+              <TextField label={t('total')} value={`${totalCost.toLocaleString('mk-MK')} den.`} InputProps={{ readOnly: true }} />
+            </Stack>
           </Box>
           <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting || createMutation.isPending}>
             {t('saveAndSend')}
@@ -244,6 +266,8 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
             <OfferField label={t('vehicle')} value={offer.vehicleId ?? '-'} />
             <OfferField label={t('partsCost')} value={`${offer.partsCost.toLocaleString('mk-MK')} den.`} />
             <OfferField label={t('laborCost')} value={`${offer.laborCost.toLocaleString('mk-MK')} den.`} />
+            <OfferField label={t('subtotal')} value={`${offer.subtotal.toLocaleString('mk-MK')} den.`} />
+            <OfferField label={t('discount')} value={`-${offer.discountAmount.toLocaleString('mk-MK')} den. (${offer.discountPercent.toLocaleString('mk-MK')}%)`} />
             <OfferField label={t('status')} value={offer.status} />
             <OfferField label={t('total')} value={`${offer.total.toLocaleString('mk-MK')} den.`} />
           </Box>
@@ -298,6 +322,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
                 <TableCell>{t('status')}</TableCell>
                 <TableCell align="right">{t('parts')}</TableCell>
                 <TableCell align="right">{t('labor')}</TableCell>
+                <TableCell align="right">{t('discount')}</TableCell>
                 <TableCell align="right">{t('total')}</TableCell>
               </TableRow>
             </TableHead>
@@ -311,6 +336,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
                   </TableCell>
                   <TableCell align="right">{offer.partsCost.toLocaleString('mk-MK')} den.</TableCell>
                   <TableCell align="right">{offer.laborCost.toLocaleString('mk-MK')} den.</TableCell>
+                  <TableCell align="right">-{offer.discountAmount.toLocaleString('mk-MK')} den.</TableCell>
                   <TableCell align="right">{offer.total.toLocaleString('mk-MK')} den.</TableCell>
                 </TableRow>
               ))}

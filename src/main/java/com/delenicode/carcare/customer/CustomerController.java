@@ -1,6 +1,8 @@
 package com.delenicode.carcare.customer;
 
 import com.delenicode.carcare.common.ApiResponse;
+import com.delenicode.carcare.loyalty.CustomerLoyaltyService;
+import com.delenicode.carcare.loyalty.CustomerLoyaltyStatusResponse;
 import com.delenicode.carcare.servicerecord.ServiceRecordResponse;
 import com.delenicode.carcare.servicerecord.ServiceRecordService;
 import com.delenicode.carcare.vehicle.VehicleResponse;
@@ -25,6 +27,7 @@ public class CustomerController {
   private final CustomerService customers;
   private final VehicleService vehicles;
   private final ServiceRecordService serviceRecords;
+  private final CustomerLoyaltyService loyalty;
 
   @GetMapping
   ApiResponse<List<CustomerResponse>> all(@RequestParam(required = false) String firstName, @RequestParam(required = false) String lastName) {
@@ -46,6 +49,12 @@ public class CustomerController {
   ApiResponse<List<ServiceRecordResponse>> serviceHistory(@PathVariable Long id) {
     customers.findById(id);
     return ApiResponse.ok("Customer service history loaded", serviceRecords.findByCustomerId(id));
+  }
+
+  @GetMapping("/{id}/loyalty-status")
+  ApiResponse<CustomerLoyaltyStatusResponse> loyaltyStatus(@PathVariable Long id) {
+    customers.findById(id);
+    return ApiResponse.ok("Customer loyalty status loaded", loyalty.statusForCustomer(id));
   }
 
   @PostMapping

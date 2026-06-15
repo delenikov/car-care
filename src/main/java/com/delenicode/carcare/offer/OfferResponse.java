@@ -4,5 +4,19 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-public record OfferResponse(Long id, Long customerId, Long vehicleId, String title, String description, List<OfferPartResponse> parts, BigDecimal partsCost, BigDecimal laborCost, BigDecimal amount, LocalDate expiresOn, OfferStatus status) {
+public record OfferResponse(
+    Long id,
+    Long customerId,
+    Long vehicleId,
+    String title,
+    String description,
+    List<OfferPartResponse> parts,
+    BigDecimal partsCost,
+    BigDecimal laborCost,
+    BigDecimal subtotalAmount,
+    BigDecimal discountPercent,
+    BigDecimal discountAmount,
+    BigDecimal amount,
+    LocalDate expiresOn,
+    OfferStatus status) {
 }

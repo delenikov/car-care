@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.delenicode.carcare.customer.Customer;
 import com.delenicode.carcare.customer.CustomerRepository;
+import com.delenicode.carcare.loyalty.CustomerLoyaltyService;
 import com.delenicode.carcare.notification.EmailDeliveryResult;
 import com.delenicode.carcare.notification.EmailService;
 import com.delenicode.carcare.notification.PdfService;
@@ -41,12 +42,14 @@ class OfferServiceTest {
   EmailService emailService;
   @Mock
   PdfService pdfService;
+  @Mock
+  CustomerLoyaltyService loyalty;
 
   OfferService offerService;
 
   @BeforeEach
   void setUp() {
-    offerService = new OfferService(offers, customers, vehicles, emailService, pdfService);
+    offerService = new OfferService(offers, customers, vehicles, emailService, pdfService, loyalty);
   }
 
   @Test
@@ -57,17 +60,41 @@ class OfferServiceTest {
       offer.setId(20L);
       return offer;
     });
+    when(loyalty.discountPercentForCustomer(10L)).thenReturn(BigDecimal.ZERO.setScale(2));
     when(emailService.sendHtml(any(), any(), any(), any())).thenReturn(new EmailDeliveryResult("ada@carcare.test", "Понуда за сервис: Brake inspection", true, "Email sent"));
 
     var response = offerService.create(new OfferRequest(10L, null, "Brake inspection", "Inspect brakes", List.of(new OfferPartRequest("Brake pads", new BigDecimal("1200.00"))), null, new BigDecimal("800.00"), null, null));
 
     assertThat(response.partsCost()).isEqualByComparingTo("1200.00");
     assertThat(response.laborCost()).isEqualByComparingTo("800.00");
+    assertThat(response.subtotalAmount()).isEqualByComparingTo("2000.00");
+    assertThat(response.discountPercent()).isEqualByComparingTo("0.00");
+    assertThat(response.discountAmount()).isEqualByComparingTo("0.00");
     assertThat(response.amount()).isEqualByComparingTo("2000.00");
     assertThat(response.parts()).hasSize(1);
     assertThat(response.parts().get(0).name()).isEqualTo("Brake pads");
     assertThat(response.status()).isEqualTo(OfferStatus.SENT);
     verify(emailService).sendHtml(eq("ada@carcare.test"), eq("Понуда за сервис: Brake inspection"), contains("ПОНУДА"), contains("Цена на делови: 1.200,00 ден."));
+  }
+
+  @Test
+  void createAppliesLoyalCustomerDiscountFromBackend() {
+    when(customers.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(customer()));
+    when(loyalty.discountPercentForCustomer(10L)).thenReturn(new BigDecimal("10.00"));
+    when(offers.save(any(Offer.class))).thenAnswer(invocation -> {
+      Offer offer = invocation.getArgument(0);
+      offer.setId(20L);
+      return offer;
+    });
+    when(emailService.sendHtml(any(), any(), any(), any())).thenReturn(new EmailDeliveryResult("ada@carcare.test", "Email subject", true, "Email sent"));
+
+    var response = offerService.create(new OfferRequest(10L, null, "Brake inspection", "Inspect brakes", List.of(new OfferPartRequest("Brake pads", new BigDecimal("1200.00"))), null, new BigDecimal("800.00"), null, null));
+
+    assertThat(response.subtotalAmount()).isEqualByComparingTo("2000.00");
+    assertThat(response.discountPercent()).isEqualByComparingTo("10.00");
+    assertThat(response.discountAmount()).isEqualByComparingTo("200.00");
+    assertThat(response.amount()).isEqualByComparingTo("1800.00");
+    verify(emailService).sendHtml(eq("ada@carcare.test"), any(), contains("Попуст за лојален клиент"), contains("Попуст за лојален клиент"));
   }
 
   @Test
@@ -110,6 +137,9 @@ class OfferServiceTest {
     offer.setDescription("Inspect brakes");
     offer.setPartsCost(new BigDecimal("1200.00"));
     offer.setLaborCost(new BigDecimal("800.00"));
+    offer.setSubtotalAmount(new BigDecimal("2000.00"));
+    offer.setDiscountPercent(BigDecimal.ZERO.setScale(2));
+    offer.setDiscountAmount(BigDecimal.ZERO.setScale(2));
     offer.setAmount(new BigDecimal("2000.00"));
     offer.setStatus(OfferStatus.DRAFT);
     OfferPart part = new OfferPart();
