@@ -3,7 +3,6 @@ package com.delenicode.carcare.security;
 import com.delenicode.carcare.user.AppUser;
 import com.delenicode.carcare.user.AppUserRepository;
 import java.util.Collection;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class CarcareUserDetailsService implements UserDetailsService {
+
   private final AppUserRepository users;
 
   @Override

@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Service;
 
@@ -42,10 +43,12 @@ public class JwtService {
   }
 
   private String createToken(String subject, Map<String, Object> claims, Instant expiresAt) {
+    Instant issuedAt = Instant.now();
     return Jwts.builder()
         .subject(subject)
         .claims(claims)
-        .issuedAt(Date.from(Instant.now()))
+        .id(UUID.randomUUID().toString())
+        .issuedAt(Date.from(issuedAt))
         .expiration(Date.from(expiresAt))
         .signWith(key)
         .compact();

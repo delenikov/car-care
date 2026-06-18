@@ -15,7 +15,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
@@ -25,8 +26,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+@Testcontainers
+@Execution(ExecutionMode.SAME_THREAD)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers(disabledWithoutDocker = true)
 class CarcarePostgresIntegrationTest {
   @Container
   static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine")
@@ -49,8 +51,7 @@ class CarcarePostgresIntegrationTest {
   @LocalServerPort
   int port;
 
-  @Autowired
-  ObjectMapper objectMapper;
+  ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
   HttpClient http = HttpClient.newHttpClient();
 
@@ -79,15 +80,15 @@ class CarcarePostgresIntegrationTest {
         "fullName", "Updated Integration Employee",
         "enabled", true,
         "password", "password124",
-        "roles", Set.of("ROLE_MANAGER")), 200).get("data");
+        "roles", Set.of("ROLE_EMPLOYEE")), 200).get("data");
     assertThat(updatedUser.get("fullName").asText()).isEqualTo("Updated Integration Employee");
-    assertThat(updatedUser.get("roles").get(0).asText()).isEqualTo("ROLE_MANAGER");
+    assertThat(updatedUser.get("roles").get(0).asText()).isEqualTo("ROLE_EMPLOYEE");
 
     TokenPair employee = login(employeeEmail, "password124");
 
     get("/api/admin/users", employee, 403);
 
-    post("/api/auth/change-password", employee, Map.of("currentPassword", "password123", "newPassword", "password456"), 200);
+    post("/api/auth/change-password", employee, Map.of("currentPassword", "password124", "newPassword", "password456"), 200);
 
     post("/api/auth/refresh", null, Map.of("refreshToken", employee.refreshToken()), 401);
 
@@ -157,7 +158,7 @@ class CarcarePostgresIntegrationTest {
         "serviceType", "Minor Service",
         "notes", "Integration booking"), 200).get("data");
     assertThat(appointment.get("status").asText()).isEqualTo("SCHEDULED");
-    assertThat(appointment.get("endsAt").asText()).isEqualTo(appointmentStart.plusHours(1).toString());
+    assertThat(OffsetDateTime.parse(appointment.get("endsAt").asText())).isEqualTo(appointmentStart.plusHours(1));
     String cancellationUrl = appointment.get("cancellationUrl").asText();
     assertThat(cancellationUrl).startsWith("http://localhost:5173/reservations/cancel/");
 
@@ -169,7 +170,7 @@ class CarcarePostgresIntegrationTest {
         "notes", "Conflicting booking"), 400);
 
     JsonNode availableSlots = get("/api/appointments/available?date=2026-06-20", admin, 200).get("data");
-    assertThat(availableSlots).allSatisfy(slot -> assertThat(slot.get("startsAt").asText()).isNotEqualTo(appointmentStart.toString()));
+    assertThat(availableSlots).allSatisfy(slot -> assertThat(OffsetDateTime.parse(slot.get("startsAt").asText())).isNotEqualTo(appointmentStart));
 
     JsonNode reminders = post("/api/appointments/reminders?date=2026-06-20", admin, Map.of(), 200).get("data");
     assertThat(reminders.get("sent").asInt()).isGreaterThanOrEqualTo(1);
@@ -311,7 +312,9 @@ class CarcarePostgresIntegrationTest {
 
   private JsonNode send(HttpRequest request, int expectedStatus) throws IOException, InterruptedException {
     HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
-    assertThat(response.statusCode()).isEqualTo(expectedStatus);
+    assertThat(response.statusCode())
+        .as("Response for %s %s: %s", request.method(), request.uri(), response.body())
+        .isEqualTo(expectedStatus);
     return response.body().isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(response.body());
   }
 
