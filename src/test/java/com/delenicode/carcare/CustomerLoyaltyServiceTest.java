@@ -1,10 +1,12 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.servicerecord.model.ServiceRecord;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.delenicode.carcare.loyalty.CustomerLoyaltyService;
-import com.delenicode.carcare.servicerecord.ServiceRecordRepository;
+import com.delenicode.carcare.loyalty.service.CustomerLoyaltyService;
+import com.delenicode.carcare.servicerecord.repository.ServiceRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

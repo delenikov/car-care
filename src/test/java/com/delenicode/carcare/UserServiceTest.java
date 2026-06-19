@@ -1,17 +1,19 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.user.model.Employee;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.delenicode.carcare.user.AppUser;
-import com.delenicode.carcare.user.AppUserRepository;
-import com.delenicode.carcare.user.Role;
-import com.delenicode.carcare.user.RoleRepository;
-import com.delenicode.carcare.user.UserRequest;
-import com.delenicode.carcare.user.UserService;
-import com.delenicode.carcare.user.UserUpdateRequest;
+import com.delenicode.carcare.user.model.AppUser;
+import com.delenicode.carcare.user.repository.AppUserRepository;
+import com.delenicode.carcare.user.model.Role;
+import com.delenicode.carcare.user.repository.RoleRepository;
+import com.delenicode.carcare.user.dto.request.UserRequest;
+import com.delenicode.carcare.user.service.UserService;
+import com.delenicode.carcare.user.dto.request.UserUpdateRequest;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;

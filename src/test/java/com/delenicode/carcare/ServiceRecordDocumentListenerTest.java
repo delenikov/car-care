@@ -1,10 +1,12 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.document.service.ServiceDocumentService;
+import com.delenicode.carcare.servicerecord.model.ServiceRecord;
 import static org.mockito.Mockito.verify;
 
-import com.delenicode.carcare.document.ServiceDocumentService;
-import com.delenicode.carcare.servicerecord.ServiceRecordCreatedEvent;
-import com.delenicode.carcare.servicerecord.ServiceRecordDocumentListener;
+import com.delenicode.carcare.servicerecord.event.ServiceRecordCreatedEvent;
+import com.delenicode.carcare.servicerecord.event.ServiceRecordDocumentListener;
 import org.junit.jupiter.api.Test;
 
 class ServiceRecordDocumentListenerTest {

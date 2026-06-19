@@ -1,5 +1,7 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.offer.service.OfferEmailRenderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -8,19 +10,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.delenicode.carcare.customer.Customer;
+import com.delenicode.carcare.customer.model.Customer;
 import com.delenicode.carcare.notification.EmailDeliveryResult;
 import com.delenicode.carcare.notification.HtmlEmailSender;
-import com.delenicode.carcare.offer.Offer;
-import com.delenicode.carcare.offer.OfferDeliveryException;
-import com.delenicode.carcare.offer.OfferDeliveryService;
-import com.delenicode.carcare.offer.OfferEmail;
-import com.delenicode.carcare.offer.OfferEmailRenderer;
-import com.delenicode.carcare.offer.OfferMapper;
-import com.delenicode.carcare.offer.OfferPricingService;
-import com.delenicode.carcare.offer.OfferRepository;
-import com.delenicode.carcare.offer.OfferResponse;
-import com.delenicode.carcare.offer.OfferStatus;
+import com.delenicode.carcare.offer.model.Offer;
+import com.delenicode.carcare.offer.exception.OfferDeliveryException;
+import com.delenicode.carcare.offer.service.OfferDeliveryService;
+import com.delenicode.carcare.offer.model.OfferEmail;
+import com.delenicode.carcare.offer.mapper.OfferMapper;
+import com.delenicode.carcare.offer.service.OfferPricingService;
+import com.delenicode.carcare.offer.repository.OfferRepository;
+import com.delenicode.carcare.offer.dto.response.OfferResponse;
+import com.delenicode.carcare.offer.model.OfferStatus;
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;

@@ -4,10 +4,10 @@
 //import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 //import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 //
-//import com.delenicode.carcare.user.AppUser;
-//import com.delenicode.carcare.user.AppUserRepository;
-//import com.delenicode.carcare.user.Role;
-//import com.delenicode.carcare.user.RoleRepository;
+//import com.delenicode.carcare.user.model.AppUser;
+//import com.delenicode.carcare.user.model.AppUserRepository;
+//import com.delenicode.carcare.user.model.Role;
+//import com.delenicode.carcare.user.model.RoleRepository;
 //import java.util.Set;
 //import org.junit.jupiter.api.BeforeEach;
 //import org.junit.jupiter.api.Test;

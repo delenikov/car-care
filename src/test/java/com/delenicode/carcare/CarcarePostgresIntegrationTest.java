@@ -1,5 +1,12 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.appointment.model.Appointment;
+import com.delenicode.carcare.auth.model.RefreshToken;
+import com.delenicode.carcare.customer.model.Customer;
+import com.delenicode.carcare.offer.model.Offer;
+import com.delenicode.carcare.servicerecord.model.ServiceRecord;
+import com.delenicode.carcare.user.model.Employee;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;

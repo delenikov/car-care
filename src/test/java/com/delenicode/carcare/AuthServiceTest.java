@@ -1,5 +1,7 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.auth.repository.RefreshTokenRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -7,17 +9,16 @@ import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 
 import com.delenicode.carcare.audit.AuditService;
-import com.delenicode.carcare.auth.AuthService;
-import com.delenicode.carcare.auth.ChangePasswordRequest;
-import com.delenicode.carcare.auth.LoginRequest;
-import com.delenicode.carcare.auth.RefreshRequest;
-import com.delenicode.carcare.auth.RefreshToken;
-import com.delenicode.carcare.auth.RefreshTokenRepository;
+import com.delenicode.carcare.auth.service.AuthService;
+import com.delenicode.carcare.auth.dto.request.ChangePasswordRequest;
+import com.delenicode.carcare.auth.dto.request.LoginRequest;
+import com.delenicode.carcare.auth.dto.request.RefreshRequest;
+import com.delenicode.carcare.auth.model.RefreshToken;
 import com.delenicode.carcare.security.JwtService;
-import com.delenicode.carcare.user.AppUser;
-import com.delenicode.carcare.user.AppUserRepository;
-import com.delenicode.carcare.user.UserResponse;
-import com.delenicode.carcare.user.UserService;
+import com.delenicode.carcare.user.model.AppUser;
+import com.delenicode.carcare.user.repository.AppUserRepository;
+import com.delenicode.carcare.user.dto.response.UserResponse;
+import com.delenicode.carcare.user.service.UserService;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;

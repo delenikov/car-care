@@ -2,8 +2,8 @@
 //
 //import static org.assertj.core.api.Assertions.assertThat;
 //
-//import com.delenicode.carcare.customer.CustomerRequest;
-//import com.delenicode.carcare.customer.CustomerService;
+//import com.delenicode.carcare.customer.dto.request.CustomerRequest;
+//import com.delenicode.carcare.customer.service.CustomerService;
 //import org.junit.jupiter.api.Test;
 //import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.boot.test.context.SpringBootTest;

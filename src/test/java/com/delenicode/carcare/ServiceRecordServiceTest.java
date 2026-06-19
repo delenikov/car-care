@@ -1,5 +1,10 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.servicerecord.exception.ServiceRecordNotFoundException;
+import com.delenicode.carcare.servicerecord.mapper.ServiceRecordMapper;
+import com.delenicode.carcare.servicerecord.service.ServiceRecordService;
+import com.delenicode.carcare.vehicle.repository.VehicleRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,19 +12,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.delenicode.carcare.customer.Customer;
-import com.delenicode.carcare.customer.CustomerRepository;
-import com.delenicode.carcare.servicerecord.InvalidServiceRecordException;
-import com.delenicode.carcare.servicerecord.ServiceRecord;
-import com.delenicode.carcare.servicerecord.ServiceRecordCostService;
-import com.delenicode.carcare.servicerecord.ServiceRecordCreatedEvent;
-import com.delenicode.carcare.servicerecord.ServiceRecordMapper;
-import com.delenicode.carcare.servicerecord.ServiceRecordRepository;
-import com.delenicode.carcare.servicerecord.ServiceRecordRequest;
-import com.delenicode.carcare.servicerecord.ServiceRecordService;
-import com.delenicode.carcare.servicerecord.ServiceRecordNotFoundException;
-import com.delenicode.carcare.vehicle.Vehicle;
-import com.delenicode.carcare.vehicle.VehicleRepository;
+import com.delenicode.carcare.customer.model.Customer;
+import com.delenicode.carcare.customer.repository.CustomerRepository;
+import com.delenicode.carcare.servicerecord.exception.InvalidServiceRecordException;
+import com.delenicode.carcare.servicerecord.model.ServiceRecord;
+import com.delenicode.carcare.servicerecord.service.ServiceRecordCostService;
+import com.delenicode.carcare.servicerecord.event.ServiceRecordCreatedEvent;
+import com.delenicode.carcare.servicerecord.repository.ServiceRecordRepository;
+import com.delenicode.carcare.servicerecord.dto.request.ServiceRecordRequest;
+import com.delenicode.carcare.vehicle.model.Vehicle;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;

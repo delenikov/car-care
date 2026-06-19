@@ -3,23 +3,30 @@ package com.delenicode.carcare;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.delenicode.carcare.appointment.Appointment;
-import com.delenicode.carcare.appointment.AppointmentRepository;
-import com.delenicode.carcare.appointment.AppointmentRequest;
-import com.delenicode.carcare.appointment.AppointmentService;
-import com.delenicode.carcare.appointment.AppointmentStatus;
-import com.delenicode.carcare.appointment.PublicAppointmentRequest;
-import com.delenicode.carcare.customer.Customer;
-import com.delenicode.carcare.customer.CustomerRepository;
+import com.delenicode.carcare.appointment.dto.request.AppointmentRequest;
+import com.delenicode.carcare.appointment.dto.request.PublicAppointmentRequest;
+import com.delenicode.carcare.appointment.event.AppointmentCreatedEvent;
+import com.delenicode.carcare.appointment.exception.InvalidAppointmentException;
+import com.delenicode.carcare.appointment.mapper.AppointmentMapper;
+import com.delenicode.carcare.appointment.model.Appointment;
+import com.delenicode.carcare.appointment.model.AppointmentStatus;
+import com.delenicode.carcare.appointment.repository.AppointmentRepository;
+import com.delenicode.carcare.appointment.service.AppointmentCancellationTokenService;
+import com.delenicode.carcare.appointment.service.AppointmentConflictValidator;
+import com.delenicode.carcare.appointment.service.AppointmentDeliveryService;
+import com.delenicode.carcare.appointment.service.AppointmentEmailRenderer;
+import com.delenicode.carcare.appointment.service.AppointmentService;
+import com.delenicode.carcare.appointment.service.AppointmentTimePolicy;
+import com.delenicode.carcare.appointment.service.PublicAppointmentBookingService;
+import com.delenicode.carcare.customer.model.Customer;
+import com.delenicode.carcare.customer.repository.CustomerRepository;
 import com.delenicode.carcare.notification.EmailDeliveryResult;
 import com.delenicode.carcare.notification.EmailService;
-import com.delenicode.carcare.vehicle.Vehicle;
-import com.delenicode.carcare.vehicle.VehicleRepository;
+import com.delenicode.carcare.vehicle.model.Vehicle;
+import com.delenicode.carcare.vehicle.repository.VehicleRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -31,6 +38,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.spring6.SpringTemplateEngine;
+import org.thymeleaf.templatemode.TemplateMode;
+import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 
 @ExtendWith(MockitoExtension.class)
 class AppointmentServiceTest {
@@ -46,6 +58,9 @@ class AppointmentServiceTest {
   @Mock
   EmailService emailService;
 
+  @Mock
+  ApplicationEventPublisher events;
+
   AppointmentService appointmentService;
   TimeZone previousTimeZone;
 
@@ -53,7 +68,14 @@ class AppointmentServiceTest {
   void setUp() {
     previousTimeZone = TimeZone.getDefault();
     TimeZone.setDefault(TimeZone.getTimeZone("Europe/Skopje"));
-    appointmentService = new AppointmentService(appointments, customers, vehicles, emailService);
+    AppointmentTimePolicy timePolicy = new AppointmentTimePolicy();
+    AppointmentCancellationTokenService cancellationTokens = new AppointmentCancellationTokenService("http://localhost:5173");
+    AppointmentMapper mapper = new AppointmentMapper(timePolicy, cancellationTokens);
+    AppointmentConflictValidator conflictValidator = new AppointmentConflictValidator(appointments);
+    PublicAppointmentBookingService publicBooking = new PublicAppointmentBookingService(customers, vehicles);
+    AppointmentEmailRenderer emailRenderer = new AppointmentEmailRenderer(templateEngine(), timePolicy, cancellationTokens);
+    AppointmentDeliveryService deliveryService = new AppointmentDeliveryService(appointments, emailService, emailRenderer);
+    appointmentService = new AppointmentService(appointments, customers, vehicles, events, mapper, timePolicy, conflictValidator, cancellationTokens, publicBooking, deliveryService);
   }
 
   @AfterEach
@@ -62,7 +84,7 @@ class AppointmentServiceTest {
   }
 
   @Test
-  void createGeneratesCancellationLinkAndSendsConfirmation() {
+  void createGeneratesCancellationLinkAndPublishesConfirmationEvent() {
     Customer customer = customer(10L);
     Vehicle vehicle = vehicle(20L, customer);
     OffsetDateTime startsAt = OffsetDateTime.parse("2026-06-15T09:00:00+02:00");
@@ -79,7 +101,7 @@ class AppointmentServiceTest {
 
     assertThat(response.cancellationUrl()).startsWith("http://localhost:5173/reservations/cancel/");
     assertThat(response.cancellationExpiresAt()).isAfter(OffsetDateTime.now().plusHours(23));
-    verify(emailService).sendHtml(eq("ada@carcare.test"), eq("Потврда за термин"), contains("ПОТВРДА ЗА ТЕРМИН"), contains("Откажување: " + response.cancellationUrl()));
+    verify(events).publishEvent(any(AppointmentCreatedEvent.class));
   }
 
   @Test
@@ -143,7 +165,7 @@ class AppointmentServiceTest {
     when(appointments.findConflicts(startsAt, startsAt.plusHours(1), null)).thenReturn(List.of(new Appointment()));
 
     assertThatThrownBy(() -> appointmentService.create(new AppointmentRequest(10L, 20L, null, startsAt, startsAt.plusHours(1), "Minor Service", null, null)))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidAppointmentException.class)
         .hasMessage("Appointment conflicts with an existing appointment");
   }
 
@@ -164,7 +186,7 @@ class AppointmentServiceTest {
   @Test
   void deleteRemovesExistingAppointment() {
     Appointment appointment = appointment(30L, customer(10L), OffsetDateTime.now().plusDays(1));
-    when(appointments.findById(30L)).thenReturn(Optional.of(appointment));
+    when(appointments.findByIdWithDetails(30L)).thenReturn(Optional.of(appointment));
 
     appointmentService.delete(30L);
 
@@ -179,7 +201,7 @@ class AppointmentServiceTest {
     when(appointments.findByCancellationToken("token")).thenReturn(Optional.of(appointment));
 
     assertThatThrownBy(() -> appointmentService.cancelByToken("token"))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidAppointmentException.class)
         .hasMessage("Cancellation link has expired");
   }
 
@@ -209,7 +231,7 @@ class AppointmentServiceTest {
     when(vehicles.findById(20L)).thenReturn(Optional.of(vehicle));
 
     assertThatThrownBy(() -> appointmentService.create(new AppointmentRequest(10L, 20L, null, startsAt, startsAt.plusHours(1), "Minor Service", null, null)))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidAppointmentException.class)
         .hasMessage("Appointment must be between 08:00 and 16:00 Europe/Skopje");
   }
 
@@ -218,13 +240,25 @@ class AppointmentServiceTest {
     Customer customer = customer(10L);
     Appointment appointment = appointment(30L, customer, OffsetDateTime.parse("2026-06-15T09:00:00+02:00"));
     when(appointments.findReminderCandidates(OffsetDateTime.parse("2026-06-15T00:00:00+02:00"), OffsetDateTime.parse("2026-06-16T00:00:00+02:00"))).thenReturn(List.of(appointment));
-    when(emailService.send("ada@carcare.test", "Appointment reminder", "Reminder for Minor Service at 2026-06-15T09:00+02:00")).thenReturn(new EmailDeliveryResult("ada@carcare.test", "Appointment reminder", true, "Email sent"));
+    when(emailService.send("ada@carcare.test", "Потсетник за термин", "Потсетник за Minor Service на 15.06.2026 во 09:00.")).thenReturn(new EmailDeliveryResult("ada@carcare.test", "Потсетник за термин", true, "Email sent"));
 
     var response = appointmentService.sendReminders(LocalDate.of(2026, 6, 15));
 
     assertThat(response.sent()).isEqualTo(1);
     assertThat(appointment.getReminderSentAt()).isNotNull();
-    verify(emailService).send("ada@carcare.test", "Appointment reminder", "Reminder for Minor Service at 2026-06-15T09:00+02:00");
+    verify(emailService).send("ada@carcare.test", "Потсетник за термин", "Потсетник за Minor Service на 15.06.2026 во 09:00.");
+    verify(appointments).save(appointment);
+  }
+
+  private TemplateEngine templateEngine() {
+    ClassLoaderTemplateResolver resolver = new ClassLoaderTemplateResolver();
+    resolver.setPrefix("templates/");
+    resolver.setSuffix(".html");
+    resolver.setTemplateMode(TemplateMode.HTML);
+    resolver.setCharacterEncoding("UTF-8");
+    SpringTemplateEngine engine = new SpringTemplateEngine();
+    engine.setTemplateResolver(resolver);
+    return engine;
   }
 
   private Customer customer(Long id) {

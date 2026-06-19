@@ -1,13 +1,14 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.offer.service.OfferEmailRenderer;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.delenicode.carcare.customer.Customer;
-import com.delenicode.carcare.offer.Offer;
-import com.delenicode.carcare.offer.OfferEmail;
-import com.delenicode.carcare.offer.OfferEmailRenderer;
-import com.delenicode.carcare.offer.OfferPart;
-import com.delenicode.carcare.offer.OfferPricingService;
+import com.delenicode.carcare.customer.model.Customer;
+import com.delenicode.carcare.offer.model.Offer;
+import com.delenicode.carcare.offer.model.OfferEmail;
+import com.delenicode.carcare.offer.model.OfferPart;
+import com.delenicode.carcare.offer.service.OfferPricingService;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.thymeleaf.spring6.SpringTemplateEngine;

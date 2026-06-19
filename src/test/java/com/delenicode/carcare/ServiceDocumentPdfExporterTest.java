@@ -1,18 +1,19 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.document.service.ServiceDocumentPdfExporter;
+import com.delenicode.carcare.document.service.ServiceDocumentViewFactory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.delenicode.carcare.customer.Customer;
-import com.delenicode.carcare.document.DocumentType;
-import com.delenicode.carcare.document.ServiceDocument;
-import com.delenicode.carcare.document.ServiceDocumentPdfExporter;
-import com.delenicode.carcare.document.ServiceDocumentViewFactory;
+import com.delenicode.carcare.customer.model.Customer;
+import com.delenicode.carcare.document.model.DocumentType;
+import com.delenicode.carcare.document.model.ServiceDocument;
 import com.delenicode.carcare.notification.PdfService;
-import com.delenicode.carcare.servicerecord.ServiceRecord;
-import com.delenicode.carcare.vehicle.Vehicle;
+import com.delenicode.carcare.servicerecord.model.ServiceRecord;
+import com.delenicode.carcare.vehicle.model.Vehicle;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;

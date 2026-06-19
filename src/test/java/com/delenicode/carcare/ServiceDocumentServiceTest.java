@@ -1,21 +1,22 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.document.mapper.ServiceDocumentMapper;
+import com.delenicode.carcare.document.repository.ServiceDocumentRepository;
+import com.delenicode.carcare.document.service.ServiceDocumentDeliveryService;
+import com.delenicode.carcare.document.service.ServiceDocumentPdfExporter;
+import com.delenicode.carcare.document.service.ServiceDocumentService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import com.delenicode.carcare.customer.Customer;
-import com.delenicode.carcare.customer.CustomerRepository;
-import com.delenicode.carcare.document.DocumentType;
-import com.delenicode.carcare.document.ServiceDocument;
-import com.delenicode.carcare.document.ServiceDocumentDeliveryService;
-import com.delenicode.carcare.document.ServiceDocumentMapper;
-import com.delenicode.carcare.document.ServiceDocumentPdfExporter;
-import com.delenicode.carcare.document.ServiceDocumentRepository;
-import com.delenicode.carcare.document.ServiceDocumentService;
-import com.delenicode.carcare.servicerecord.ServiceRecord;
-import com.delenicode.carcare.servicerecord.ServiceRecordRepository;
-import com.delenicode.carcare.vehicle.Vehicle;
+import com.delenicode.carcare.customer.model.Customer;
+import com.delenicode.carcare.customer.repository.CustomerRepository;
+import com.delenicode.carcare.document.model.DocumentType;
+import com.delenicode.carcare.document.model.ServiceDocument;
+import com.delenicode.carcare.servicerecord.model.ServiceRecord;
+import com.delenicode.carcare.servicerecord.repository.ServiceRecordRepository;
+import com.delenicode.carcare.vehicle.model.Vehicle;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;

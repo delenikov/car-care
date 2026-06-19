@@ -1,21 +1,22 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.document.exception.ServiceDocumentDeliveryException;
+import com.delenicode.carcare.document.mapper.ServiceDocumentMapper;
+import com.delenicode.carcare.document.repository.ServiceDocumentRepository;
+import com.delenicode.carcare.document.service.ServiceDocumentDeliveryService;
+import com.delenicode.carcare.document.service.ServiceDocumentEmailRenderer;
+import com.delenicode.carcare.document.service.ServiceDocumentPdfExporter;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.delenicode.carcare.customer.Customer;
-import com.delenicode.carcare.document.DocumentType;
-import com.delenicode.carcare.document.ServiceDocument;
-import com.delenicode.carcare.document.ServiceDocumentDeliveryException;
-import com.delenicode.carcare.document.ServiceDocumentDeliveryService;
-import com.delenicode.carcare.document.ServiceDocumentEmail;
-import com.delenicode.carcare.document.ServiceDocumentEmailRenderer;
-import com.delenicode.carcare.document.ServiceDocumentMapper;
-import com.delenicode.carcare.document.ServiceDocumentPdfExporter;
-import com.delenicode.carcare.document.ServiceDocumentRepository;
+import com.delenicode.carcare.customer.model.Customer;
+import com.delenicode.carcare.document.model.DocumentType;
+import com.delenicode.carcare.document.model.ServiceDocument;
+import com.delenicode.carcare.document.model.ServiceDocumentEmail;
 import com.delenicode.carcare.notification.EmailDeliveryResult;
 import com.delenicode.carcare.notification.HtmlAttachmentEmailSender;
 import java.time.Instant;

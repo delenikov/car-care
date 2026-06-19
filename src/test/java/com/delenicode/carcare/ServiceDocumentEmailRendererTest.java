@@ -1,15 +1,16 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.document.service.ServiceDocumentEmailRenderer;
+import com.delenicode.carcare.document.service.ServiceDocumentViewFactory;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.delenicode.carcare.customer.Customer;
-import com.delenicode.carcare.document.DocumentType;
-import com.delenicode.carcare.document.ServiceDocument;
-import com.delenicode.carcare.document.ServiceDocumentEmail;
-import com.delenicode.carcare.document.ServiceDocumentEmailRenderer;
-import com.delenicode.carcare.document.ServiceDocumentViewFactory;
-import com.delenicode.carcare.servicerecord.ServiceRecord;
-import com.delenicode.carcare.vehicle.Vehicle;
+import com.delenicode.carcare.customer.model.Customer;
+import com.delenicode.carcare.document.model.DocumentType;
+import com.delenicode.carcare.document.model.ServiceDocument;
+import com.delenicode.carcare.document.model.ServiceDocumentEmail;
+import com.delenicode.carcare.servicerecord.model.ServiceRecord;
+import com.delenicode.carcare.vehicle.model.Vehicle;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;

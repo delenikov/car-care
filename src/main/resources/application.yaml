@@ -6,7 +6,7 @@ spring:
     username: myuser
     password: secret
   jpa:
-    show-sql: true
+    show-sql: false
     hibernate:
       ddl-auto: validate
     open-in-view: false
@@ -46,3 +46,8 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+logging:
+  level:
+    com.delenicode.carcare: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN

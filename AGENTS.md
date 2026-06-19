@@ -70,30 +70,45 @@ Never place business logic in Controllers.
 
 ## Backend Structure
 
-backend/src/main/java/com/company/autoservice
+Keep the backend as a feature-oriented modular monolith.
 
-├── config
-├── auth
-├── user
-├── customer
-├── vehicle
-├── service
-├── appointment
-├── quote
-├── document
-├── loyalty
-├── notification
-├── common
+Shared infrastructure belongs in dedicated top-level packages:
 
-Each module must contain:
+```text
+backend/src/main/java/com/delenicode/carcare
+|-- common/
+|-- config/
+|-- security/
+|-- notification/
+|-- audit/
+`-- <feature>/
+```
 
-controller/
-service/
-repository/
-dto/
-entity/
-mapper/
+Feature packages include `auth`, `user`, `customer`, `vehicle`, `appointment`,
+`servicerecord`, `offer`, `document`, `dashboard`, and `loyalty`.
 
+Within each feature package, use consistent subpackages:
+
+```text
+<feature>/
+|-- controller/
+|-- service/
+|-- repository/
+|-- model/
+|-- dto/
+|   |-- request/
+|   `-- response/
+|-- mapper/
+|-- event/
+|-- exception/
+`-- scheduler/ (only if needed)
+```
+
+Use only the subpackages needed by the feature. Keep JPA entities and domain
+value objects in `model/`. Keep feature-specific exceptions in the feature's
+`exception/` package. Do not duplicate resource exceptions across features; use
+one canonical exception per resource, or the shared `ResourceNotFoundException`
+when a feature-specific type is not needed.
 ---
 
 ## Frontend Structure
@@ -232,6 +247,8 @@ Follow Clean Code principles, SOLID principles, and standard Java/Spring Boot be
   * `CustomerNotFoundException extends ResourceNotFoundException`
   * `VehicleNotFoundException extends ResourceNotFoundException`
   * `QuoteAlreadySentException extends BusinessRuleException`
+* Keep feature-specific exceptions in the owning feature's `exception/` package.
+* Do not duplicate resource exceptions across features; use the canonical resource exception from the owning feature, or use `ResourceNotFoundException` when a dedicated type is not needed.
 * Global exception handler should handle categories, not every individual exception.
 * API errors must return consistent JSON.
 

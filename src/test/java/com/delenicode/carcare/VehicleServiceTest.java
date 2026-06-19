@@ -1,16 +1,17 @@
 package com.delenicode.carcare;
 
+
+import com.delenicode.carcare.vehicle.dto.request.VehicleRequest;
+import com.delenicode.carcare.vehicle.repository.VehicleRepository;
+import com.delenicode.carcare.vehicle.service.VehicleService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import com.delenicode.carcare.customer.Customer;
-import com.delenicode.carcare.customer.CustomerRepository;
-import com.delenicode.carcare.vehicle.Vehicle;
-import com.delenicode.carcare.vehicle.VehicleRepository;
-import com.delenicode.carcare.vehicle.VehicleRequest;
-import com.delenicode.carcare.vehicle.VehicleService;
+import com.delenicode.carcare.customer.model.Customer;
+import com.delenicode.carcare.customer.repository.CustomerRepository;
+import com.delenicode.carcare.vehicle.model.Vehicle;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;

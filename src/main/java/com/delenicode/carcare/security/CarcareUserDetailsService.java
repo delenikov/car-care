@@ -1,7 +1,7 @@
 package com.delenicode.carcare.security;
 
-import com.delenicode.carcare.user.AppUser;
-import com.delenicode.carcare.user.AppUserRepository;
+import com.delenicode.carcare.user.model.AppUser;
+import com.delenicode.carcare.user.repository.AppUserRepository;
 import java.util.Collection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
