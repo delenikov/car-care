@@ -39,3 +39,18 @@ Bearer <access-token>
 ### Logout
 
 Logout invalidates refresh token.
+
+# Offer Delivery Rules
+
+## Service Offer Creation
+
+When an offer is created, the backend stores it with status `PENDING_DELIVERY` and publishes an offer-created event. Email delivery runs only after the database transaction commits successfully.
+
+## Delivery Statuses
+
+* `DRAFT` - reserved for future manual draft workflows.
+* `PENDING_DELIVERY` - offer is saved and ready to be emailed.
+* `SENT` - offer email was accepted by the mail service.
+* `DELIVERY_FAILED` - offer was saved, but email delivery failed.
+
+Already sent offers must not be emailed again by the normal send operation. Failed or pending offers may be sent again explicitly.

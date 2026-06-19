@@ -1,5 +1,8 @@
 package com.delenicode.carcare.offer;
 
 public enum OfferStatus {
-  DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED
+  DRAFT,
+  PENDING_DELIVERY,
+  SENT,
+  DELIVERY_FAILED
 }

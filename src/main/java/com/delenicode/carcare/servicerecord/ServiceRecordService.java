@@ -1,58 +1,79 @@
 package com.delenicode.carcare.servicerecord;
 
+import com.delenicode.carcare.common.PageResponse;
 import com.delenicode.carcare.customer.Customer;
 import com.delenicode.carcare.customer.CustomerRepository;
-import com.delenicode.carcare.document.ServiceDocumentService;
 import com.delenicode.carcare.vehicle.Vehicle;
 import com.delenicode.carcare.vehicle.VehicleRepository;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ServiceRecordService {
   private final ServiceRecordRepository serviceRecords;
   private final CustomerRepository customers;
   private final VehicleRepository vehicles;
-  private final ServiceDocumentService documents;
+  private final ApplicationEventPublisher events;
+  private final ServiceRecordCostService costs;
+  private final ServiceRecordMapper mapper;
 
   @Transactional(readOnly = true)
-  public List<ServiceRecordResponse> findAll() {
-    return serviceRecords.findAll().stream().map(this::toResponse).toList();
+  public PageResponse<ServiceRecordResponse> findAll(Pageable pageable) {
+    Page<Long> page = serviceRecords.findPageIds(pageable);
+    if (page.isEmpty()) {
+      return PageResponse.from(page, List.of());
+    }
+    Map<Long, ServiceRecord> recordsById = new LinkedHashMap<>();
+    serviceRecords.findAllWithDetailsByIdIn(page.getContent())
+        .forEach(record -> recordsById.put(record.getId(), record));
+    List<ServiceRecordResponse> content = page.getContent().stream()
+        .map(recordsById::get)
+        .filter(Objects::nonNull)
+        .map(mapper::toResponse)
+        .toList();
+    return PageResponse.from(page, content);
   }
 
   @Transactional(readOnly = true)
   public ServiceRecordResponse findById(Long id) {
-    return serviceRecords.findById(id)
-        .filter(record -> !record.getCustomer().isDeleted())
-        .map(this::toResponse)
-        .orElseThrow(() -> new IllegalArgumentException("Service record not found"));
+    return serviceRecords.findByIdWithDetails(id)
+        .map(mapper::toResponse)
+        .orElseThrow(() -> new ServiceRecordNotFoundException(id));
   }
 
   @Transactional(readOnly = true)
   public List<ServiceRecordResponse> findByCustomerId(Long customerId) {
-    return serviceRecords.findByCustomerIdAndCustomerDeletedFalse(customerId).stream().map(this::toResponse).toList();
+    return serviceRecords.findByCustomerIdAndCustomerDeletedFalse(customerId).stream()
+        .map(mapper::toResponse)
+        .toList();
   }
 
   @Transactional(readOnly = true)
   public List<ServiceRecordResponse> findByVehicleId(Long vehicleId) {
-    return serviceRecords.findByVehicleIdAndVehicleCustomerDeletedFalseOrderByServiceDateDesc(vehicleId).stream().map(this::toResponse).toList();
+    return serviceRecords.findByVehicleIdAndVehicleCustomerDeletedFalseOrderByServiceDateDesc(vehicleId).stream()
+        .map(mapper::toResponse)
+        .toList();
   }
 
   @Transactional
   public ServiceRecordResponse create(ServiceRecordRequest request) {
-    Customer customer = customers.findByIdAndDeletedFalse(request.customerId()).orElseThrow(() -> new IllegalArgumentException("Customer not found"));
-    Vehicle vehicle = vehicles.findById(request.vehicleId()).filter(existing -> !existing.getCustomer().isDeleted()).orElseThrow(() -> new IllegalArgumentException("Vehicle not found"));
-    if (!vehicle.getCustomer().getId().equals(customer.getId())) {
-      throw new IllegalArgumentException("Vehicle does not belong to customer");
-    }
-    BigDecimal partsCost = costOrZero(request.partsCost());
-    BigDecimal laborCost = costOrFallback(request.laborCost(), request.totalAmount());
-    rejectNegative(partsCost, "Parts cost must not be negative");
-    rejectNegative(laborCost, "Labor cost must not be negative");
+    Customer customer = customers.findByIdAndDeletedFalse(request.customerId())
+        .orElseThrow(() -> new CustomerNotFoundException(request.customerId()));
+    Vehicle vehicle = resolveVehicle(request.vehicleId(), customer);
+    BigDecimal partsCost = costs.partsCost(request);
+    BigDecimal laborCost = costs.laborCost(request);
     ServiceRecord record = new ServiceRecord();
     record.setCustomer(customer);
     record.setVehicle(vehicle);
@@ -60,48 +81,23 @@ public class ServiceRecordService {
     record.setServiceType(request.serviceType());
     record.setPartsCost(partsCost);
     record.setLaborCost(laborCost);
-    record.setTotalAmount(partsCost.add(laborCost));
+    record.setTotalAmount(costs.totalAmount(partsCost, laborCost));
     record.setOdometer(request.odometer());
     record.setReplacedParts(request.replacedParts());
     record.setNotes(request.notes());
     ServiceRecord saved = serviceRecords.save(record);
-    documents.generateForServiceRecord(saved);
-    return toResponse(saved);
+    log.info("Publishing service-record-created event for service record {}", saved.getId());
+    events.publishEvent(new ServiceRecordCreatedEvent(saved.getId()));
+    return mapper.toResponse(saved);
   }
 
-  public ServiceRecordResponse toResponse(ServiceRecord record) {
-    Vehicle vehicle = record.getVehicle();
-    return new ServiceRecordResponse(
-        record.getId(),
-        record.getCustomer().getId(),
-        record.getCustomer().getFullName(),
-        vehicle.getId(),
-        vehicle.getPlateNumber(),
-        vehicle.getMake() + " " + vehicle.getModel(),
-        record.getServiceDate(),
-        record.getServiceType(),
-        record.getPartsCost(),
-        record.getLaborCost(),
-        record.getTotalAmount(),
-        record.getOdometer(),
-        record.getReplacedParts(),
-        record.getNotes());
-  }
-
-  private BigDecimal costOrZero(BigDecimal value) {
-    return value == null ? BigDecimal.ZERO : value;
-  }
-
-  private BigDecimal costOrFallback(BigDecimal value, BigDecimal fallback) {
-    if (value != null) {
-      return value;
+  private Vehicle resolveVehicle(Long vehicleId, Customer customer) {
+    Vehicle vehicle = vehicles.findById(vehicleId)
+        .filter(existing -> !existing.getCustomer().isDeleted())
+        .orElseThrow(() -> new VehicleNotFoundException(vehicleId));
+    if (!Objects.equals(vehicle.getCustomer().getId(), customer.getId())) {
+      throw new InvalidServiceRecordException("Vehicle does not belong to customer");
     }
-    return fallback == null ? BigDecimal.ZERO : fallback;
-  }
-
-  private void rejectNegative(BigDecimal value, String message) {
-    if (value.signum() < 0) {
-      throw new IllegalArgumentException(message);
-    }
+    return vehicle;
   }
 }

@@ -13,7 +13,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class EmailService {
+public class EmailService implements HtmlEmailSender, HtmlAttachmentEmailSender {
+
   private final JavaMailSender mailSender;
 
   @Value("${app.mail.from:no-reply@carcare.local}")

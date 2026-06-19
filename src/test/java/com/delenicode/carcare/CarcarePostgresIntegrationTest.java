@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.delenicode.carcare.notification.EmailDeliveryResult;
+import com.delenicode.carcare.notification.EmailService;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -19,6 +21,10 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -29,6 +35,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @Execution(ExecutionMode.SAME_THREAD)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(CarcarePostgresIntegrationTest.TestMailConfig.class)
 class CarcarePostgresIntegrationTest {
   @Container
   static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine")
@@ -59,11 +66,15 @@ class CarcarePostgresIntegrationTest {
   void authLifecycleAndAdminRbacWorkAgainstPostgres() throws Exception {
     JsonNode missingEmail = post("/api/auth/login", null, Map.of("email", "missing@carcare.local", "password", "password123"), 401);
     assertThat(missingEmail.get("message").asText()).isEqualTo("User with that email does not exist");
+    assertError(missingEmail, 401, "UNAUTHORIZED", "/api/auth/login");
 
     JsonNode wrongPassword = post("/api/auth/login", null, Map.of("email", "admin@carcare.local", "password", "wrong-password"), 401);
     assertThat(wrongPassword.get("message").asText()).isEqualTo("Password is wrong");
+    assertError(wrongPassword, 401, "UNAUTHORIZED", "/api/auth/login");
 
     TokenPair admin = login("admin@carcare.local", "admin123");
+    JsonNode missingOffer = get("/api/offers/999999999", admin, 404);
+    assertError(missingOffer, 404, "NOT_FOUND", "/api/offers/999999999");
     String employeeEmail = "employee-" + UUID.randomUUID() + "@carcare.test";
 
     JsonNode createdUser = post("/api/admin/users", admin, Map.of(
@@ -233,7 +244,16 @@ class CarcarePostgresIntegrationTest {
         "expiresOn", "2026-07-12"), 200).get("data");
     long offerId = offer.get("id").asLong();
     assertThat(offer.get("amount").decimalValue()).isEqualByComparingTo("1200.00");
+    assertThat(offer.get("status").asText()).isEqualTo("PENDING_DELIVERY");
 
+    JsonNode offersPage = get("/api/offers?page=0&size=5", admin, 200).get("data");
+    assertThat(offersPage.get("content").isArray()).isTrue();
+    assertArrayContainsId(offersPage.get("content"), offerId);
+    assertThat(offersPage.get("page").asInt()).isZero();
+    assertThat(offersPage.get("size").asInt()).isEqualTo(5);
+
+    JsonNode deliveredOffer = waitForOfferStatus(offerId, admin, "SENT");
+    assertThat(deliveredOffer.get("status").asText()).isEqualTo("SENT");
     JsonNode sentOffer = post("/api/offers/" + offerId + "/send", admin, Map.of(), 200).get("data");
     assertThat(sentOffer.get("status").asText()).isEqualTo("SENT");
     assertThat(getRaw("/api/offers/" + offerId + "/pdf", admin, 200)).startsWith("%PDF");
@@ -318,6 +338,18 @@ class CarcarePostgresIntegrationTest {
     return response.body().isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(response.body());
   }
 
+  private JsonNode waitForOfferStatus(long offerId, TokenPair tokenPair, String expectedStatus) throws Exception {
+    JsonNode offer = objectMapper.createObjectNode();
+    for (int attempt = 0; attempt < 10; attempt++) {
+      offer = get("/api/offers/" + offerId, tokenPair, 200).get("data");
+      if (expectedStatus.equals(offer.get("status").asText())) {
+        return offer;
+      }
+      Thread.sleep(100);
+    }
+    return offer;
+  }
+
   private String getRaw(String path, TokenPair tokenPair, int expectedStatus) throws Exception {
     HttpRequest.Builder builder = HttpRequest.newBuilder(uri(path)).GET();
     authorize(builder, tokenPair);
@@ -353,6 +385,14 @@ class CarcarePostgresIntegrationTest {
     assertThat(found).isTrue();
   }
 
+  private void assertError(JsonNode error, int status, String code, String path) {
+    assertThat(error.get("timestamp").asText()).isNotBlank();
+    assertThat(error.get("status").asInt()).isEqualTo(status);
+    assertThat(error.get("error").asText()).isEqualTo(code);
+    assertThat(error.get("path").asText()).isEqualTo(path);
+    assertThat(error.get("message").asText()).isNotBlank();
+  }
+
   private long findDocumentIdByServiceRecordId(JsonNode array, long serviceRecordId) {
     assertThat(array.isArray()).isTrue();
     for (JsonNode item : array) {
@@ -364,5 +404,29 @@ class CarcarePostgresIntegrationTest {
   }
 
   private record TokenPair(String accessToken, String refreshToken) {
+  }
+
+  @TestConfiguration
+  static class TestMailConfig {
+    @Bean
+    @Primary
+    EmailService emailService() {
+      return new EmailService(null) {
+        @Override
+        public EmailDeliveryResult send(String recipient, String subject, String body) {
+          return new EmailDeliveryResult(recipient, subject, true, "Email sent");
+        }
+
+        @Override
+        public EmailDeliveryResult sendHtml(String recipient, String subject, String htmlBody, String textBody) {
+          return new EmailDeliveryResult(recipient, subject, true, "Email sent");
+        }
+
+        @Override
+        public EmailDeliveryResult sendHtmlWithAttachment(String recipient, String subject, String htmlBody, String textBody, String attachmentName, String contentType, byte[] attachment) {
+          return new EmailDeliveryResult(recipient, subject, true, "Email sent");
+        }
+      };
+    }
   }
 }

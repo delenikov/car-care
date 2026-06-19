@@ -1,9 +1,12 @@
 package com.delenicode.carcare.offer;
 
 import com.delenicode.carcare.common.ApiResponse;
+import com.delenicode.carcare.common.PageResponse;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +24,8 @@ public class OfferController {
   private final OfferService offers;
 
   @GetMapping
-  ApiResponse<List<OfferResponse>> all() {
-    return ApiResponse.ok("Offers loaded", offers.findAll());
+  ApiResponse<PageResponse<OfferResponse>> all(@PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+    return ApiResponse.ok("Offers loaded", offers.findAll(pageable));
   }
 
   @GetMapping("/{id}")

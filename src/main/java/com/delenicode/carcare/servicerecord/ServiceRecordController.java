@@ -1,9 +1,12 @@
 package com.delenicode.carcare.servicerecord;
 
 import com.delenicode.carcare.common.ApiResponse;
+import com.delenicode.carcare.common.PageResponse;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,8 +21,8 @@ public class ServiceRecordController {
   private final ServiceRecordService serviceRecords;
 
   @GetMapping
-  ApiResponse<List<ServiceRecordResponse>> all() {
-    return ApiResponse.ok("Service records loaded", serviceRecords.findAll());
+  ApiResponse<PageResponse<ServiceRecordResponse>> all(@PageableDefault(size = 20, sort = "serviceDate", direction = Sort.Direction.DESC) Pageable pageable) {
+    return ApiResponse.ok("Service records loaded", serviceRecords.findAll(pageable));
   }
 
   @GetMapping("/{id}")

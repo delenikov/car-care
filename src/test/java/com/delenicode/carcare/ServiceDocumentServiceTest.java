@@ -2,20 +2,17 @@ package com.delenicode.carcare;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.delenicode.carcare.customer.Customer;
 import com.delenicode.carcare.customer.CustomerRepository;
 import com.delenicode.carcare.document.DocumentType;
 import com.delenicode.carcare.document.ServiceDocument;
+import com.delenicode.carcare.document.ServiceDocumentDeliveryService;
+import com.delenicode.carcare.document.ServiceDocumentMapper;
+import com.delenicode.carcare.document.ServiceDocumentPdfExporter;
 import com.delenicode.carcare.document.ServiceDocumentRepository;
 import com.delenicode.carcare.document.ServiceDocumentService;
-import com.delenicode.carcare.notification.EmailDeliveryResult;
-import com.delenicode.carcare.notification.EmailService;
-import com.delenicode.carcare.notification.PdfService;
 import com.delenicode.carcare.servicerecord.ServiceRecord;
 import com.delenicode.carcare.servicerecord.ServiceRecordRepository;
 import com.delenicode.carcare.vehicle.Vehicle;
@@ -39,15 +36,21 @@ class ServiceDocumentServiceTest {
   @Mock
   ServiceRecordRepository serviceRecords;
   @Mock
-  EmailService emailService;
+  ServiceDocumentPdfExporter pdfExporter;
   @Mock
-  PdfService pdfService;
+  ServiceDocumentDeliveryService delivery;
 
   ServiceDocumentService serviceDocumentService;
 
   @BeforeEach
   void setUp() {
-    serviceDocumentService = new ServiceDocumentService(documents, customers, serviceRecords, emailService, pdfService);
+    serviceDocumentService = new ServiceDocumentService(
+        documents,
+        customers,
+        serviceRecords,
+        new ServiceDocumentMapper(),
+        pdfExporter,
+        delivery);
   }
 
   @Test
@@ -81,26 +84,32 @@ class ServiceDocumentServiceTest {
     assertThat(response.customerId()).isEqualTo(10L);
     assertThat(response.serviceRecordId()).isEqualTo(30L);
     assertThat(response.type()).isEqualTo(DocumentType.INSPECTION);
+    assertThat(response.fileName()).isEqualTo("service-record-30.pdf");
     assertThat(response.contentType()).isEqualTo("application/pdf");
   }
 
   @Test
-  void sendEmailsGeneratedDocumentToCustomer() {
-    ServiceDocument document = document();
-    when(documents.findById(40L)).thenReturn(Optional.of(document));
-    when(pdfService.renderServiceReport(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn("%PDF".getBytes());
-    when(emailService.sendHtmlWithAttachment(any(), any(), any(), any(), any(), any(), any())).thenReturn(new EmailDeliveryResult("ada@carcare.test", "Извештај за завршен сервис: Minor Service", true, "Email sent"));
+  void generateForServiceRecordByIdLoadsRecordWithDetails() {
+    ServiceRecord record = serviceRecord();
+    when(serviceRecords.findByIdWithDetails(30L)).thenReturn(Optional.of(record));
+    when(documents.save(any(ServiceDocument.class))).thenAnswer(invocation -> {
+      ServiceDocument document = invocation.getArgument(0);
+      document.setId(40L);
+      return document;
+    });
 
-    serviceDocumentService.send(40L);
+    var response = serviceDocumentService.generateForServiceRecord(30L);
 
-    verify(emailService).sendHtmlWithAttachment(eq("ada@carcare.test"), eq("Извештај за завршен сервис: Minor Service"), contains("225.000 km"), contains("Километража: 225000 km"), eq("service-record-30.pdf"), eq("application/pdf"), any(byte[].class));
+    assertThat(response.customerId()).isEqualTo(10L);
+    assertThat(response.serviceRecordId()).isEqualTo(30L);
+    assertThat(response.fileName()).isEqualTo("service-record-30.pdf");
   }
 
   @Test
-  void exportPdfRendersDocumentPdf() {
+  void exportPdfDelegatesToPdfExporter() {
     ServiceDocument document = document();
-    when(documents.findById(40L)).thenReturn(Optional.of(document));
-    when(pdfService.renderServiceReport(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn("%PDF".getBytes());
+    when(documents.findByIdWithDetails(40L)).thenReturn(Optional.of(document));
+    when(pdfExporter.export(document)).thenReturn("%PDF".getBytes());
 
     assertThat(serviceDocumentService.exportPdf(40L)).startsWith("%PDF".getBytes());
   }

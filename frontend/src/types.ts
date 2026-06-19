@@ -121,7 +121,7 @@ export interface Offer {
   total: number;
   partsCost: number;
   laborCost: number;
-  status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
+  status: 'DRAFT' | 'PENDING_DELIVERY' | 'SENT' | 'DELIVERY_FAILED';
 }
 
 export interface DocumentRecord {

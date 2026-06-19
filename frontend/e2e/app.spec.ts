@@ -169,13 +169,13 @@ async function mockBackend(page: Page) {
       const body = route.request().postDataJSON();
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify(ok({ id: '502', customerName: 'Ada Lovelace', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', ...body, amount: Number(body.partsCost) + Number(body.laborCost), status: 'DRAFT' }))
+        body: JSON.stringify(ok({ id: '502', customerName: 'Ada Lovelace', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', ...body, amount: Number(body.partsCost) + Number(body.laborCost), status: 'PENDING_DELIVERY' }))
       });
       return;
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '501', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'DRAFT' }]))
+      body: JSON.stringify(ok([{ id: '501', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'PENDING_DELIVERY' }]))
     });
   });
 
@@ -195,7 +195,7 @@ async function mockBackend(page: Page) {
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok({ id: '502', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'DRAFT' }))
+      body: JSON.stringify(ok({ id: '502', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', partsCost: 700, laborCost: 500, amount: 1200, status: 'PENDING_DELIVERY' }))
     });
   });
 
@@ -897,7 +897,7 @@ test('shows cancellation details before cancelling a public reservation', async 
 test('creates and sends quotations with a detailed cost breakdown', async ({ page }) => {
   await signIn(page);
   let offerPayload: Record<string, unknown> | undefined;
-  let offerStatus = 'DRAFT';
+  let offerStatus = 'PENDING_DELIVERY';
   let offerParts: Array<{ name: string; price: number }> = [];
   let sendCalled = false;
   let quotePdfCalled = false;
@@ -930,7 +930,7 @@ test('creates and sends quotations with a detailed cost breakdown', async ({ pag
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(ok([{ id: '501', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', parts: [{ name: 'Brake pads', price: 700 }], partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 0, discountAmount: 0, amount: 1200, status: 'DRAFT' }]))
+      body: JSON.stringify(ok([{ id: '501', customerId: '101', customerName: 'Ada Lovelace', vehicleId: '201', vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', title: 'Brake inspection', parts: [{ name: 'Brake pads', price: 700 }], partsCost: 700, laborCost: 500, subtotalAmount: 1200, discountPercent: 0, discountAmount: 0, amount: 1200, status: 'PENDING_DELIVERY' }]))
     });
   });
 

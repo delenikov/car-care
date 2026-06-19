@@ -123,6 +123,17 @@ interface BackendDocument {
   createdAt?: string;
 }
 
+interface BackendPage<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
+const pageContent = <T>(response: T[] | BackendPage<T>): T[] => (Array.isArray(response) ? response : response.content);
+
 const toCustomer = (customer: BackendCustomer): Customer => ({
   id: String(customer.id),
   name: customer.fullName,
@@ -322,7 +333,7 @@ export const appointmentsApi = {
   confirmCancel: (token: string) => unwrap(http.post<BackendAppointment>('/api/appointments/cancel', { token })).then(toAppointment)
 };
 export const serviceRecordsApi = {
-  list: () => unwrap(http.get<BackendServiceRecord[]>('/api/service-records')).then((records) => records.map(toServiceRecord)),
+  list: () => unwrap(http.get<BackendServiceRecord[] | BackendPage<BackendServiceRecord>>('/api/service-records')).then((records) => pageContent(records).map(toServiceRecord)),
   get: (id: string) => unwrap(http.get<BackendServiceRecord>(`/api/service-records/${id}`)).then(toServiceRecord),
   create: (payload: Omit<ServiceRecord, 'id'>) => unwrap(http.post<BackendServiceRecord>('/api/service-records', toServiceRecordRequest(payload))).then(toServiceRecord),
   update: (id: string, payload: Partial<Omit<ServiceRecord, 'id'>>) =>
@@ -330,11 +341,11 @@ export const serviceRecordsApi = {
   remove: (id: string) => unwrap(http.delete<void>(`/api/service-records/${id}`))
 };
 export const offersApi = {
-  list: () => unwrap(http.get<BackendOffer[]>('/api/offers')).then((offers) => offers.map(toOffer)),
+  list: () => unwrap(http.get<BackendOffer[] | BackendPage<BackendOffer>>('/api/offers')).then((offers) => pageContent(offers).map(toOffer)),
   get: (id: string) => unwrap(http.get<BackendOffer>(`/api/offers/${id}`)).then(toOffer),
   create: (payload: Omit<Offer, 'id'>) => unwrap(http.post<BackendOffer>('/api/offers', toOfferRequest(payload))).then(toOffer),
   update: (id: string, payload: Partial<Omit<Offer, 'id'>>) =>
-    unwrap(http.put<BackendOffer>(`/api/offers/${id}`, toOfferRequest({ customerId: '', title: '', subtotal: 0, discountPercent: 0, discountAmount: 0, total: 0, parts: [], partsCost: 0, laborCost: 0, status: 'DRAFT', ...payload }))).then(toOffer),
+    unwrap(http.put<BackendOffer>(`/api/offers/${id}`, toOfferRequest({ customerId: '', title: '', subtotal: 0, discountPercent: 0, discountAmount: 0, total: 0, parts: [], partsCost: 0, laborCost: 0, status: 'PENDING_DELIVERY', ...payload }))).then(toOffer),
   remove: (id: string) => unwrap(http.delete<void>(`/api/offers/${id}`)),
   send: (id: string) => unwrap(http.post<BackendOffer>(`/api/offers/${id}/send`, {})).then(toOffer),
   exportPdf: (id: string) => http.get<Blob>(`/api/offers/${id}/pdf`, { responseType: 'blob' })

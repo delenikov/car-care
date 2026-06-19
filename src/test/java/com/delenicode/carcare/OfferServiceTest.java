@@ -2,22 +2,26 @@ package com.delenicode.carcare;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.delenicode.carcare.customer.Customer;
 import com.delenicode.carcare.customer.CustomerRepository;
 import com.delenicode.carcare.loyalty.CustomerLoyaltyService;
-import com.delenicode.carcare.notification.EmailDeliveryResult;
-import com.delenicode.carcare.notification.EmailService;
 import com.delenicode.carcare.notification.PdfService;
 import com.delenicode.carcare.offer.Offer;
+import com.delenicode.carcare.offer.OfferCreatedEvent;
+import com.delenicode.carcare.offer.OfferDeliveryService;
+import com.delenicode.carcare.offer.OfferEmailRenderer;
+import com.delenicode.carcare.offer.OfferMapper;
 import com.delenicode.carcare.offer.OfferPart;
 import com.delenicode.carcare.offer.OfferPartRequest;
+import com.delenicode.carcare.offer.OfferPricingService;
 import com.delenicode.carcare.offer.OfferRepository;
 import com.delenicode.carcare.offer.OfferRequest;
+import com.delenicode.carcare.offer.OfferResponse;
 import com.delenicode.carcare.offer.OfferService;
 import com.delenicode.carcare.offer.OfferStatus;
 import com.delenicode.carcare.vehicle.Vehicle;
@@ -28,8 +32,12 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class OfferServiceTest {
@@ -40,21 +48,47 @@ class OfferServiceTest {
   @Mock
   VehicleRepository vehicles;
   @Mock
-  EmailService emailService;
-  @Mock
   PdfService pdfService;
   @Mock
   CustomerLoyaltyService loyalty;
+  @Mock
+  ApplicationEventPublisher events;
+  @Mock
+  OfferEmailRenderer emailRenderer;
+  @Mock
+  OfferDeliveryService deliveryService;
 
+  OfferPricingService pricing;
+  OfferMapper mapper;
   OfferService offerService;
 
   @BeforeEach
   void setUp() {
-    offerService = new OfferService(offers, customers, vehicles, emailService, pdfService, loyalty);
+    pricing = new OfferPricingService();
+    mapper = new OfferMapper(pricing);
+    offerService = new OfferService(offers, customers, vehicles, pdfService, loyalty, events, pricing, mapper, emailRenderer, deliveryService);
   }
 
   @Test
-  void createCalculatesQuoteTotalFromPartsAndLabor() {
+  void findAllReturnsPaginatedOffersWithDetailsInPageOrder() {
+    Offer first = offer();
+    first.setId(20L);
+    Offer second = offer();
+    second.setId(21L);
+    second.setTitle("Oil service");
+    when(offers.findPageIds(PageRequest.of(0, 2))).thenReturn(new PageImpl<>(List.of(21L, 20L), PageRequest.of(0, 2), 3));
+    when(offers.findAllWithDetailsByIdIn(List.of(21L, 20L))).thenReturn(List.of(first, second));
+
+    var response = offerService.findAll(PageRequest.of(0, 2));
+
+    assertThat(response.page()).isZero();
+    assertThat(response.size()).isEqualTo(2);
+    assertThat(response.totalElements()).isEqualTo(3);
+    assertThat(response.content()).extracting(OfferResponse::id).containsExactly(21L, 20L);
+  }
+
+  @Test
+  void createCalculatesQuoteTotalAndPublishesDeliveryEventAfterPersisting() {
     when(customers.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(customer()));
     when(offers.save(any(Offer.class))).thenAnswer(invocation -> {
       Offer offer = invocation.getArgument(0);
@@ -62,9 +96,8 @@ class OfferServiceTest {
       return offer;
     });
     when(loyalty.discountPercentForCustomer(10L)).thenReturn(BigDecimal.ZERO.setScale(2));
-    when(emailService.sendHtml(any(), any(), any(), any())).thenReturn(new EmailDeliveryResult("ada@carcare.test", "Понуда за сервис: Brake inspection", true, "Email sent"));
 
-    var response = offerService.create(new OfferRequest(10L, null, "Brake inspection", "Inspect brakes", List.of(new OfferPartRequest("Brake pads", new BigDecimal("1200.00"))), null, new BigDecimal("800.00"), null, null));
+    OfferResponse response = offerService.create(new OfferRequest(10L, null, "Brake inspection", "Inspect brakes", List.of(new OfferPartRequest("Brake pads", new BigDecimal("1200.00"))), null, new BigDecimal("800.00"), null, null));
 
     assertThat(response.partsCost()).isEqualByComparingTo("1200.00");
     assertThat(response.laborCost()).isEqualByComparingTo("800.00");
@@ -74,8 +107,12 @@ class OfferServiceTest {
     assertThat(response.amount()).isEqualByComparingTo("2000.00");
     assertThat(response.parts()).hasSize(1);
     assertThat(response.parts().get(0).name()).isEqualTo("Brake pads");
-    assertThat(response.status()).isEqualTo(OfferStatus.SENT);
-    verify(emailService).sendHtml(eq("ada@carcare.test"), eq("Понуда за сервис: Brake inspection"), contains("ПОНУДА"), contains("Цена на делови: 1.200,00 ден."));
+    assertThat(response.status()).isEqualTo(OfferStatus.PENDING_DELIVERY);
+
+    ArgumentCaptor<OfferCreatedEvent> event = ArgumentCaptor.forClass(OfferCreatedEvent.class);
+    verify(events).publishEvent(event.capture());
+    assertThat(event.getValue().offerId()).isEqualTo(20L);
+    verifyNoInteractions(deliveryService);
   }
 
   @Test
@@ -87,40 +124,35 @@ class OfferServiceTest {
       offer.setId(20L);
       return offer;
     });
-    when(emailService.sendHtml(any(), any(), any(), any())).thenReturn(new EmailDeliveryResult("ada@carcare.test", "Email subject", true, "Email sent"));
 
-    var response = offerService.create(new OfferRequest(10L, null, "Brake inspection", "Inspect brakes", List.of(new OfferPartRequest("Brake pads", new BigDecimal("1200.00"))), null, new BigDecimal("800.00"), null, null));
+    OfferResponse response = offerService.create(new OfferRequest(10L, null, "Brake inspection", "Inspect brakes", List.of(new OfferPartRequest("Brake pads", new BigDecimal("1200.00"))), null, new BigDecimal("800.00"), null, null));
 
     assertThat(response.subtotalAmount()).isEqualByComparingTo("2000.00");
     assertThat(response.discountPercent()).isEqualByComparingTo("10.00");
     assertThat(response.discountAmount()).isEqualByComparingTo("200.00");
     assertThat(response.amount()).isEqualByComparingTo("1800.00");
-    verify(emailService).sendHtml(eq("ada@carcare.test"), any(), contains("Попуст за лојален клиент"), contains("Попуст за лојален клиент"));
   }
 
   @Test
-  void sendEmailsQuoteAndMarksItSent() {
-    Offer offer = offer();
-    when(offers.findById(20L)).thenReturn(Optional.of(offer));
-    when(offers.save(offer)).thenReturn(offer);
-    when(emailService.sendHtml(any(), any(), any(), any())).thenReturn(new EmailDeliveryResult("ada@carcare.test", "Понуда за сервис: Brake inspection", true, "Email sent"));
+  void sendDelegatesToDeliveryService() {
+    OfferResponse sent = mapper.toResponse(sentOffer());
+    when(deliveryService.deliver(20L)).thenReturn(sent);
 
-    var response = offerService.send(20L);
+    OfferResponse response = offerService.send(20L);
 
     assertThat(response.status()).isEqualTo(OfferStatus.SENT);
-    assertThat(response.customerName()).isEqualTo("Ada Lovelace");
-    assertThat(response.vehiclePlate()).isEqualTo("SK-20");
-    assertThat(response.vehicleName()).isEqualTo("Volkswagen Golf");
-    verify(emailService).sendHtml(eq("ada@carcare.test"), eq("Понуда за сервис: Brake inspection"), contains("Brake pads"), contains("Вкупно: 2.000,00 ден."));
+    verify(deliveryService).deliver(20L);
   }
 
   @Test
-  void exportPdfUsesPdfService() {
+  void exportPdfUsesRendererTextAndPdfService() {
     Offer offer = offer();
-    when(offers.findById(20L)).thenReturn(Optional.of(offer));
+    when(offers.findByIdWithDetails(20L)).thenReturn(Optional.of(offer));
+    when(emailRenderer.renderText(offer)).thenReturn("Вкупно: 2.000,00 ден.");
     when(pdfService.renderServiceSummary(any(), any())).thenReturn("%PDF".getBytes());
 
     assertThat(offerService.exportPdf(20L)).startsWith("%PDF".getBytes());
+    verify(pdfService).renderServiceSummary(eq("Понуда за сервис: Brake inspection"), eq("Вкупно: 2.000,00 ден."));
   }
 
   private Customer customer() {
@@ -131,6 +163,12 @@ class OfferServiceTest {
     customer.setFullName("Ada Lovelace");
     customer.setEmail("ada@carcare.test");
     return customer;
+  }
+
+  private Offer sentOffer() {
+    Offer offer = offer();
+    offer.setStatus(OfferStatus.SENT);
+    return offer;
   }
 
   private Offer offer() {
@@ -146,7 +184,7 @@ class OfferServiceTest {
     offer.setDiscountPercent(BigDecimal.ZERO.setScale(2));
     offer.setDiscountAmount(BigDecimal.ZERO.setScale(2));
     offer.setAmount(new BigDecimal("2000.00"));
-    offer.setStatus(OfferStatus.DRAFT);
+    offer.setStatus(OfferStatus.PENDING_DELIVERY);
     OfferPart part = new OfferPart();
     part.setOffer(offer);
     part.setName("Brake pads");

@@ -256,7 +256,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
             </Button>
             <Button
               variant="contained"
-              disabled={offer.status !== 'DRAFT' || sendMutation.isPending}
+              disabled={(offer.status !== 'PENDING_DELIVERY' && offer.status !== 'DELIVERY_FAILED') || sendMutation.isPending}
               onClick={async () => {
                 await sendMutation.mutateAsync(offer.id);
                 await queryClient.invalidateQueries({ queryKey: ['offers', id] });
@@ -357,7 +357,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
                   <TableCell>{offer.title}</TableCell>
                   <TableCell>{offer.customerName ?? offer.customerId}</TableCell>
                   <TableCell>
-                    <Chip label={offer.status} color={offer.status === 'SENT' ? 'secondary' : 'default'} size="small" />
+                    <Chip label={offer.status} color={offer.status === 'SENT' ? 'secondary' : offer.status === 'DELIVERY_FAILED' ? 'error' : 'warning'} size="small" />
                   </TableCell>
                   <TableCell align="right">{offer.partsCost.toLocaleString('mk-MK')} ден.</TableCell>
                   <TableCell align="right">{offer.laborCost.toLocaleString('mk-MK')} ден.</TableCell>

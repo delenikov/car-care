@@ -4,15 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.delenicode.carcare.customer.Customer;
 import com.delenicode.carcare.customer.CustomerRepository;
-import com.delenicode.carcare.document.ServiceDocumentService;
+import com.delenicode.carcare.servicerecord.InvalidServiceRecordException;
 import com.delenicode.carcare.servicerecord.ServiceRecord;
+import com.delenicode.carcare.servicerecord.ServiceRecordCostService;
+import com.delenicode.carcare.servicerecord.ServiceRecordCreatedEvent;
+import com.delenicode.carcare.servicerecord.ServiceRecordMapper;
 import com.delenicode.carcare.servicerecord.ServiceRecordRepository;
 import com.delenicode.carcare.servicerecord.ServiceRecordRequest;
 import com.delenicode.carcare.servicerecord.ServiceRecordService;
+import com.delenicode.carcare.servicerecord.ServiceRecordNotFoundException;
 import com.delenicode.carcare.vehicle.Vehicle;
 import com.delenicode.carcare.vehicle.VehicleRepository;
 import java.math.BigDecimal;
@@ -22,8 +27,12 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class ServiceRecordServiceTest {
@@ -37,13 +46,32 @@ class ServiceRecordServiceTest {
   VehicleRepository vehicles;
 
   @Mock
-  ServiceDocumentService documents;
+  ApplicationEventPublisher events;
 
   ServiceRecordService serviceRecordService;
 
   @BeforeEach
   void setUp() {
-    serviceRecordService = new ServiceRecordService(serviceRecords, customers, vehicles, documents);
+    ServiceRecordCostService costs = new ServiceRecordCostService();
+    ServiceRecordMapper mapper = new ServiceRecordMapper();
+    serviceRecordService = new ServiceRecordService(serviceRecords, customers, vehicles, events, costs, mapper);
+  }
+
+  @Test
+  void findAllReturnsPaginatedServiceRecordsWithDetailsInPageOrder() {
+    Customer customer = customer(10L);
+    ServiceRecord first = serviceRecord(30L, customer, vehicle(20L, customer));
+    ServiceRecord second = serviceRecord(31L, customer, vehicle(21L, customer));
+    second.setServiceType("Oil service");
+    when(serviceRecords.findPageIds(PageRequest.of(0, 2))).thenReturn(new PageImpl<>(List.of(31L, 30L), PageRequest.of(0, 2), 3));
+    when(serviceRecords.findAllWithDetailsByIdIn(List.of(31L, 30L))).thenReturn(List.of(first, second));
+
+    var response = serviceRecordService.findAll(PageRequest.of(0, 2));
+
+    assertThat(response.page()).isZero();
+    assertThat(response.size()).isEqualTo(2);
+    assertThat(response.totalElements()).isEqualTo(3);
+    assertThat(response.content()).extracting("id").containsExactly(31L, 30L);
   }
 
   @Test
@@ -74,7 +102,9 @@ class ServiceRecordServiceTest {
     assertThat(response.laborCost()).isEqualByComparingTo("800.00");
     assertThat(response.totalAmount()).isEqualByComparingTo("2000.00");
     assertThat(response.replacedParts()).isEqualTo("Oil filter");
-    verify(documents).generateForServiceRecord(any(ServiceRecord.class));
+    ArgumentCaptor<ServiceRecordCreatedEvent> event = ArgumentCaptor.forClass(ServiceRecordCreatedEvent.class);
+    verify(events).publishEvent(event.capture());
+    assertThat(event.getValue().serviceRecordId()).isEqualTo(30L);
   }
 
   @Test
@@ -83,7 +113,11 @@ class ServiceRecordServiceTest {
     Vehicle vehicle = vehicle(20L, customer);
     when(customers.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(customer));
     when(vehicles.findById(20L)).thenReturn(Optional.of(vehicle));
-    when(serviceRecords.save(any(ServiceRecord.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(serviceRecords.save(any(ServiceRecord.class))).thenAnswer(invocation -> {
+      ServiceRecord record = invocation.getArgument(0);
+      record.setId(30L);
+      return record;
+    });
 
     var response = serviceRecordService.create(new ServiceRecordRequest(
         10L,
@@ -121,8 +155,9 @@ class ServiceRecordServiceTest {
         123456,
         null,
         null)))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidServiceRecordException.class)
         .hasMessage("Vehicle does not belong to customer");
+    verifyNoInteractions(events);
   }
 
   @Test
@@ -146,7 +181,7 @@ class ServiceRecordServiceTest {
   void findByIdReturnsFullServiceRecordDetails() {
     Customer customer = customer(10L);
     ServiceRecord record = serviceRecord(30L, customer, vehicle(20L, customer));
-    when(serviceRecords.findById(30L)).thenReturn(Optional.of(record));
+    when(serviceRecords.findByIdWithDetails(30L)).thenReturn(Optional.of(record));
 
     var response = serviceRecordService.findById(30L);
 
@@ -169,11 +204,11 @@ class ServiceRecordServiceTest {
   void findByIdRejectsDeletedCustomerRecord() {
     Customer customer = customer(10L);
     customer.setDeleted(true);
-    when(serviceRecords.findById(30L)).thenReturn(Optional.of(serviceRecord(30L, customer, vehicle(20L, customer))));
+    when(serviceRecords.findByIdWithDetails(30L)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> serviceRecordService.findById(30L))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Service record not found");
+        .isInstanceOf(ServiceRecordNotFoundException.class)
+        .hasMessage("Service record not found: 30");
   }
 
   private Customer customer(Long id) {

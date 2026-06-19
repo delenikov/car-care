@@ -1,5 +1,6 @@
 package com.delenicode.carcare.common;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -12,19 +13,26 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  ResponseEntity<ApiResponse<Map<String, String>>> validation(MethodArgumentNotValidException ex) {
+  ResponseEntity<ApiErrorResponse> validation(MethodArgumentNotValidException ex, HttpServletRequest request) {
     Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
         .collect(Collectors.toMap(error -> error.getField(), error -> String.valueOf(error.getDefaultMessage()), (a, b) -> a));
-    return ResponseEntity.badRequest().body(ApiResponse.fail("Validation failed", errors));
+    return ResponseEntity.badRequest().body(ApiErrorResponse.validation(HttpStatus.BAD_REQUEST.value(), "Validation failed", request.getRequestURI(), errors));
   }
 
   @ExceptionHandler(BadCredentialsException.class)
-  ResponseEntity<ApiResponse<Void>> badCredentials(BadCredentialsException ex) {
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.fail(ex.getMessage(), null));
+  ResponseEntity<ApiErrorResponse> badCredentials(BadCredentialsException ex, HttpServletRequest request) {
+    HttpStatus status = HttpStatus.UNAUTHORIZED;
+    return ResponseEntity.status(status).body(ApiErrorResponse.of(status.value(), status.name(), ex.getMessage(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(ApiException.class)
+  ResponseEntity<ApiErrorResponse> apiException(ApiException ex, HttpServletRequest request) {
+    return ResponseEntity.status(ex.status()).body(ApiErrorResponse.of(ex.status().value(), ex.errorCode(), ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
-  ResponseEntity<ApiResponse<Void>> illegalArgument(IllegalArgumentException ex) {
-    return ResponseEntity.badRequest().body(ApiResponse.fail(ex.getMessage(), null));
+  ResponseEntity<ApiErrorResponse> illegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+    HttpStatus status = HttpStatus.BAD_REQUEST;
+    return ResponseEntity.badRequest().body(ApiErrorResponse.of(status.value(), "VALIDATION_ERROR", ex.getMessage(), request.getRequestURI()));
   }
 }

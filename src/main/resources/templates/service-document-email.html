@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="mk" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Извештај за сервис</title>
+</head>
+<body style="margin:0;padding:0;background:#f5efe2;font-family:Arial,Helvetica,sans-serif;color:#26322f;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5efe2;padding:32px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:760px;background:#fffaf0;border:1px solid #e3d8c4;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="padding:34px 38px 22px;background:#14231f;color:#fffaf0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="vertical-align:top;">
+                    <div style="font-size:22px;font-weight:700;color:#fffaf0;">CarCare ASMS</div>
+                    <div style="font-size:13px;color:#d9cdb8;margin-top:8px;">Авто сервис центар</div>
+                  </td>
+                  <td align="right" style="vertical-align:top;">
+                    <div style="font-size:26px;font-weight:700;color:#f2cf7a;">СЕРВИСЕН ИЗВЕШТАЈ</div>
+                    <div style="font-size:13px;color:#d9cdb8;margin-top:8px;">Бр. #<span th:text="${documentNumber}">1</span></div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 38px 16px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td width="50%" style="vertical-align:top;padding-right:20px;">
+                    <div style="font-size:12px;text-transform:uppercase;color:#7a6c58;font-weight:700;margin-bottom:8px;">Клиент</div>
+                    <div style="font-size:16px;font-weight:700;color:#14231f;" th:text="${customerName}">Клиент</div>
+                    <div style="font-size:14px;line-height:1.6;color:#5b635f;margin-top:6px;">
+                      <span th:text="${customerAddress}">Адреса</span><br>
+                      <span th:text="${customerEmail}">email@example.com</span>
+                    </div>
+                  </td>
+                  <td width="50%" style="vertical-align:top;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size:14px;color:#5b635f;">
+                      <tr><td style="padding:4px 0;">Датум на сервис:</td><td align="right" style="padding:4px 0;color:#14231f;font-weight:700;" th:text="${serviceDate}">13.06.2026</td></tr>
+                      <tr><td style="padding:4px 0;">Возило:</td><td align="right" style="padding:4px 0;color:#14231f;font-weight:700;" th:text="${vehicle}">SK-0000 - Audi A3</td></tr>
+                      <tr><td style="padding:4px 0;">Километража:</td><td align="right" style="padding:4px 0;color:#14231f;font-weight:700;"><span th:text="${odometer}">0</span> km</td></tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 38px 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:14px;">
+                <tr style="background:#f2cf7a;color:#14231f;">
+                  <th align="left" style="padding:13px 12px;border-bottom:1px solid #d9a520;">Поле</th>
+                  <th align="left" style="padding:13px 12px;border-bottom:1px solid #d9a520;">Информација</th>
+                </tr>
+                <tr>
+                  <td style="padding:14px 12px;border-bottom:1px solid #efe5d4;color:#5b635f;font-weight:700;">Тип на сервис</td>
+                  <td style="padding:14px 12px;border-bottom:1px solid #efe5d4;color:#26322f;" th:text="${serviceType}">Мал сервис</td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 12px;border-bottom:1px solid #efe5d4;color:#5b635f;font-weight:700;">Заменети делови</td>
+                  <td style="padding:14px 12px;border-bottom:1px solid #efe5d4;color:#26322f;" th:text="${replacedParts}">-</td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 12px;border-bottom:1px solid #efe5d4;color:#5b635f;font-weight:700;">Белешки</td>
+                  <td style="padding:14px 12px;border-bottom:1px solid #efe5d4;color:#26322f;" th:text="${notes}">-</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 38px 36px;">
+              <div style="border-top:1px solid #e3d8c4;margin-top:14px;margin-bottom:14px;"></div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size:15px;color:#26322f;">
+                <tr><td style="padding:6px 0;font-weight:700;">Цена на делови</td><td align="right" style="padding:6px 0;" th:text="${partsCost}">0,00 ден.</td></tr>
+                <tr><td style="padding:6px 0;font-weight:700;">Цена на работа</td><td align="right" style="padding:6px 0;" th:text="${laborCost}">0,00 ден.</td></tr>
+              </table>
+              <div style="border-top:2px solid #d9a520;margin:14px 0;"></div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="font-size:24px;font-weight:700;color:#14231f;">ВКУПНО</td>
+                  <td align="right" style="font-size:24px;font-weight:700;color:#14231f;" th:text="${total}">0,00 ден.</td>
+                </tr>
+              </table>
+              <div style="font-size:13px;line-height:1.6;color:#6f756f;margin-top:22px;">Ви благодариме за довербата. Овој извештај ги содржи податоците за завршениот сервис.</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
