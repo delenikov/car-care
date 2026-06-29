@@ -7,6 +7,10 @@ import {
   Button,
   CircularProgress,
   Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   InputAdornment,
   Paper,
@@ -25,6 +29,20 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
+import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded';
+import EmailRoundedIcon from '@mui/icons-material/EmailRounded';
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded';
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
+import ConfirmationNumberRoundedIcon from '@mui/icons-material/ConfirmationNumberRounded';
+import PinRoundedIcon from '@mui/icons-material/PinRounded';
+import LocalGasStationRoundedIcon from '@mui/icons-material/LocalGasStationRounded';
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -80,7 +98,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
   const listQuery = useQuery({
     queryKey: ['customers', submittedFilters],
     queryFn: () => customersApi.list(cleanFilters(submittedFilters)),
-    enabled: mode === 'list'
+    enabled: mode === 'list' || mode === 'create'
   });
   const detailQuery = useQuery({
     queryKey: ['customers', id],
@@ -212,21 +230,103 @@ function CustomerPage({ mode }: { mode: Mode }) {
     }
   });
 
+  const isCreate = mode === 'create';
+  const formTitle = isCreate ? t('newCustomer') : `${t('edit')} ${detailQuery.data?.name ?? ''}`;
+  const customerForm = (
+    <>
+      <ApiErrorAlert message={errorMessage} />
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+          gap: 2
+        }}
+      >
+        <FormTextField control={control} name="name" label={t('fullName')} placeholder="Александар Стојановски" autoComplete="name" InputProps={{ startAdornment: fieldIcon(<PersonRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
+        <FormTextField control={control} name="phone" label={t('phone')} placeholder="+389 70 123 456" autoComplete="tel" InputProps={{ startAdornment: fieldIcon(<PhoneRoundedIcon />) }} />
+        <FormTextField control={control} name="email" label={t('email')} placeholder="korisnik@email.com" type="email" autoComplete="email" InputProps={{ startAdornment: fieldIcon(<EmailRoundedIcon />) }} />
+        <FormTextField control={control} name="notes" label={t('address')} placeholder="ул. Пример 1, Скопје" autoComplete="street-address" multiline minRows={3} InputProps={{ startAdornment: fieldIcon(<HomeRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
+      </Box>
+    </>
+  );
+
+  if (isCreate) {
+    return (
+      <>
+        {listQuery.isLoading ? (
+          <LoadingState />
+        ) : listQuery.isError ? (
+          <ErrorState error={listQuery.error} />
+        ) : (
+          <ResourceFrame title={t('customers')} actionLabel={t('newCustomer')} actionTo="/customers/new" actionIcon={<AddRoundedIcon />}>
+            <Paper sx={{ p: 2 }}>
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={2}
+                component="form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setSubmittedFilters(filters);
+                }}
+              >
+                <TextField
+                  name="firstName"
+                  label={t('firstName')}
+                  value={filters.firstName}
+                  onChange={(event) => setFilters((current) => ({ ...current, firstName: event.target.value }))}
+                  fullWidth
+                />
+                <TextField
+                  name="lastName"
+                  label={t('lastName')}
+                  value={filters.lastName}
+                  onChange={(event) => setFilters((current) => ({ ...current, lastName: event.target.value }))}
+                  fullWidth
+                />
+                <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
+                  {t('search')}
+                </Button>
+              </Stack>
+            </Paper>
+            <CustomerTable customers={listQuery.data ?? []} />
+          </ResourceFrame>
+        )}
+        <ResourceFormDialog
+          title={formTitle}
+          closeTo="/customers"
+          onSubmit={onSubmit}
+          isSubmitting={formState.isSubmitting}
+        >
+          {customerForm}
+        </ResourceFormDialog>
+      </>
+    );
+  }
+
   return (
-    <ResourceFrame title={mode === 'create' ? `${t('create')} ${t('customers')}` : `${t('edit')} ${detailQuery.data?.name ?? ''}`}>
-      <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
-        <Box sx={{ mb: 3 }}>
-          <ApiErrorAlert message={errorMessage} />
-        </Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
-          <FormTextField control={control} name="name" label={t('fullName')} />
-          <FormTextField control={control} name="phone" label={t('phone')} />
-          <FormTextField control={control} name="email" label={t('email')} />
-          <FormTextField control={control} name="notes" label={t('address')} multiline minRows={3} sx={{ gridColumn: { md: '1 / -1' } }} />
-        </Box>
-        <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
-          {t('save')}
-        </Button>
+    <ResourceFrame title={formTitle}>
+      <Paper
+        component="form"
+        onSubmit={onSubmit}
+        sx={{
+          p: { xs: 2, md: 2.5 },
+          boxShadow: 2,
+          width: '100%',
+          overflow: 'hidden'
+        }}
+      >
+        <Stack spacing={2}>
+          {customerForm}
+          <Divider />
+          <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
+            <Button component={RouterLink} to="/customers" variant="outlined" startIcon={<ArrowBackRoundedIcon />}>
+              {t('cancel')}
+            </Button>
+            <Button type="submit" variant="contained" startIcon={<SaveRoundedIcon />} disabled={formState.isSubmitting}>
+              {t('save')}
+            </Button>
+          </Stack>
+        </Stack>
       </Paper>
     </ResourceFrame>
   );
@@ -244,7 +344,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
   const listQuery = useQuery({
     queryKey: ['vehicles', submittedSearchTerm],
     queryFn: () => vehiclesApi.list(cleanVehicleSearch(submittedSearchTerm)),
-    enabled: mode === 'list'
+    enabled: mode === 'list' || mode === 'create'
   });
   const detailQuery = useQuery({
     queryKey: ['vehicles', id],
@@ -370,13 +470,13 @@ function VehiclePage({ mode }: { mode: Mode }) {
     }
   });
 
-  return (
-    <ResourceFrame title={mode === 'create' ? `${t('create')} ${t('vehicles')}` : `${t('edit')} ${detailQuery.data?.plate ?? ''}`}>
-      <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
-        <Box sx={{ mb: 3 }}>
-          <ApiErrorAlert message={errorMessage} />
-        </Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
+  const isCreate = mode === 'create';
+  const formTitle = isCreate ? t('newVehicle') : `${t('edit')} ${detailQuery.data?.plate ?? ''}`;
+  const vehicleForm = (
+    <>
+      <ApiErrorAlert message={errorMessage} />
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
+        <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
           <Controller
             control={control}
             name="customerId"
@@ -399,6 +499,12 @@ function VehiclePage({ mode }: { mode: Mode }) {
                       helperText={fieldState.error?.message}
                       InputProps={{
                         ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            {fieldIcon(<PersonRoundedIcon />)}
+                            {params.InputProps.startAdornment}
+                          </>
+                        ),
                         endAdornment: (
                           <>
                             {customersQuery.isLoading ? <CircularProgress color="inherit" size={20} /> : null}
@@ -412,19 +518,152 @@ function VehiclePage({ mode }: { mode: Mode }) {
               );
             }}
           />
-          <FormTextField control={control} name="plate" label={t('licensePlate')} />
-          <FormTextField control={control} name="make" label={t('brand')} />
-          <FormTextField control={control} name="model" label={t('model')} />
-          <FormTextField control={control} name="year" label={t('year')} type="number" />
-          <FormTextField control={control} name="vin" label={t('vin')} />
-          <FormTextField control={control} name="fuelType" label={t('fuelType')} />
-          <FormTextField control={control} name="engine" label={t('engine')} />
         </Box>
-        <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
-          {t('save')}
-        </Button>
+        <FormTextField control={control} name="make" label={t('brand')} placeholder="BMW" InputProps={{ startAdornment: fieldIcon(<DirectionsCarRoundedIcon />) }} />
+        <FormTextField control={control} name="model" label={t('model')} placeholder="320d" InputProps={{ startAdornment: fieldIcon(<BadgeRoundedIcon />) }} />
+        <FormTextField control={control} name="year" label={t('year')} placeholder="2022" type="number" InputProps={{ startAdornment: fieldIcon(<CalendarMonthRoundedIcon />) }} />
+        <FormTextField control={control} name="plate" label={t('licensePlate')} placeholder="SK 1234 AB" InputProps={{ startAdornment: fieldIcon(<ConfirmationNumberRoundedIcon />) }} />
+        <FormTextField control={control} name="vin" label={t('vin')} placeholder="WBA3A5G5XFNS12345" InputProps={{ startAdornment: fieldIcon(<PinRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
+        <FormTextField control={control} name="fuelType" label={t('fuelType')} placeholder="Дизел" InputProps={{ startAdornment: fieldIcon(<LocalGasStationRoundedIcon />) }} />
+        <FormTextField control={control} name="engine" label={t('engine')} placeholder="2.0 TDI" InputProps={{ startAdornment: fieldIcon(<SettingsRoundedIcon />) }} />
+      </Box>
+    </>
+  );
+
+  if (isCreate) {
+    return (
+      <>
+        {listQuery.isLoading ? (
+          <LoadingState />
+        ) : listQuery.isError ? (
+          <ErrorState error={listQuery.error} />
+        ) : (
+          <ResourceFrame title={t('vehicles')} actionLabel={t('newVehicle')} actionTo="/vehicles/new" actionIcon={<AddRoundedIcon />}>
+            <Paper sx={{ p: 2 }}>
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={2}
+                component="form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setSubmittedSearchTerm(searchTerm);
+                }}
+              >
+                <TextField
+                  name="vehicleSearch"
+                  label={t('search')}
+                  placeholder={t('searchVehiclePlaceholder')}
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  InputProps={{
+                    endAdornment: searchTerm ? (
+                      <InputAdornment position="end">
+                        <IconButton aria-label={t('clearVehicleQuery')} edge="end" onClick={() => setSearchTerm('')}>
+                          <ClearRoundedIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ) : null
+                  }}
+                  fullWidth
+                />
+                <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
+                  {t('search')}
+                </Button>
+                <Button type="button" variant="text" startIcon={<RestartAltRoundedIcon />} onClick={() => {
+                  setSearchTerm('');
+                  setSubmittedSearchTerm('');
+                }} sx={{ minWidth: 120 }}>
+                  {t('reset')}
+                </Button>
+              </Stack>
+            </Paper>
+            <VehicleTable vehicles={listQuery.data ?? []} searchTerm={submittedSearchTerm} />
+          </ResourceFrame>
+        )}
+        <ResourceFormDialog
+          title={formTitle}
+          closeTo="/vehicles"
+          onSubmit={onSubmit}
+          isSubmitting={formState.isSubmitting}
+        >
+          {vehicleForm}
+        </ResourceFormDialog>
+      </>
+    );
+  }
+
+  return (
+    <ResourceFrame title={formTitle}>
+      <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
+        <Stack spacing={2.5}>
+          {vehicleForm}
+          <Button sx={{ alignSelf: 'flex-start' }} type="submit" variant="contained" disabled={formState.isSubmitting}>
+            {t('save')}
+          </Button>
+        </Stack>
       </Paper>
     </ResourceFrame>
+  );
+}
+
+function ResourceFormDialog({
+  title,
+  closeTo,
+  children,
+  onSubmit,
+  isSubmitting
+}: {
+  title: string;
+  closeTo: string;
+  children: React.ReactNode;
+  onSubmit: React.FormEventHandler<HTMLFormElement>;
+  isSubmitting: boolean;
+}) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  return (
+    <Dialog
+      open
+      fullWidth
+      maxWidth="sm"
+      onClose={() => navigate(closeTo)}
+      PaperProps={{
+        component: 'form',
+        onSubmit,
+        sx: {
+          borderRadius: 2,
+          overflow: 'hidden',
+          backgroundImage: 'none'
+        }
+      }}
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, px: 3, py: 2 }}>
+        <Typography variant="h5">{title}</Typography>
+        <IconButton component={RouterLink} to={closeTo} aria-label={t('cancel')} edge="end">
+          <CloseRoundedIcon />
+        </IconButton>
+      </DialogTitle>
+      <Divider />
+      <DialogContent sx={{ p: 3 }}>{children}</DialogContent>
+      <Divider />
+      <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+        <Button component={RouterLink} to={closeTo} variant="outlined">
+          {t('cancel')}
+        </Button>
+        <Button type="submit" variant="contained" startIcon={<SaveRoundedIcon />} disabled={isSubmitting}>
+          {t('save')}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function fieldIcon(icon: React.ReactNode) {
+  return (
+    <InputAdornment position="start" sx={{ color: 'text.secondary' }}>
+      {icon}
+    </InputAdornment>
   );
 }
 

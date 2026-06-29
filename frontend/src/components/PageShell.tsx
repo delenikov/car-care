@@ -59,9 +59,6 @@ function DrawerContent({ onNavigate }: { onNavigate?: () => void }) {
       <Box sx={{ p: 2, borderRadius: 4, bgcolor: 'primary.dark', color: 'primary.contrastText', position: 'relative', overflow: 'hidden' }}>
         <Box sx={{ position: 'absolute', inset: 'auto -20% -40% auto', width: 140, height: 140, borderRadius: '50%', bgcolor: 'secondary.main', opacity: 0.3 }} />
         <Typography variant="h5">{t('appName')}</Typography>
-        <Typography variant="body2" sx={{ opacity: 0.8 }}>
-          Авто сервис центар
-        </Typography>
       </Box>
       <List sx={{ flex: 1 }}>
         {visibleNavItems.map((item) => (

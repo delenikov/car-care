@@ -30,7 +30,7 @@ function renderWithProviders(ui: React.ReactElement) {
   );
 }
 
-describe('ASMS frontend baseline', () => {
+describe('CarCare frontend baseline', () => {
   beforeEach(() => {
     sessionStorage.clear();
     vi.restoreAllMocks();

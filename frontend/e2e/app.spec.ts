@@ -377,11 +377,12 @@ test('creates a customer with the backend DTO shape expected by the API client',
   });
 
   await page.goto('/customers/new');
+  await expect(page.getByRole('dialog')).toBeVisible();
   await page.locator('input[name="name"]').fill('Grace Hopper');
   await page.locator('input[name="phone"]').fill('+38970222222');
   await page.locator('input[name="email"]').fill('grace@carcare.test');
   await page.locator('textarea[name="notes"]').fill('Compiler Street');
-  await page.locator('button[type="submit"]').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Зачувај' }).click();
 
   await expect(page).toHaveURL(/\/customers\/999$/);
   expect(customerPayload).toEqual({
@@ -527,6 +528,7 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
   });
 
   await page.goto('/vehicles/new');
+  await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByLabel('Клиент').fill('Ada');
   await page.getByRole('option', { name: /Ada Lovelace/ }).click();
   await expect(page.getByLabel('Клиент')).toHaveValue('Ada Lovelace');
@@ -537,7 +539,7 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
   await page.locator('input[name="vin"]').fill('VIN202');
   await page.locator('input[name="fuelType"]').fill('Hybrid');
   await page.locator('input[name="engine"]').fill('1.8');
-  await page.locator('button[type="submit"]').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Зачувај' }).click();
 
   await expect(page).toHaveURL(/\/vehicles\/202$/);
   expect(createPayload).toEqual({

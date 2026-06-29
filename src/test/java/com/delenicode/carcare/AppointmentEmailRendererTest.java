@@ -44,7 +44,7 @@ class AppointmentEmailRendererTest {
     AppointmentEmail email = renderer.renderConfirmation(appointment());
 
     assertThat(email.subject()).isEqualTo("Потврда за термин");
-    assertThat(email.htmlBody()).contains("ПОТВРДА ЗА ТЕРМИН", "Авто сервис центар", "Откажи термин", "15.06.2026");
+    assertThat(email.htmlBody()).contains("ПОТВРДА ЗА ТЕРМИН", "CarCare", "Откажи термин", "15.06.2026");
     assertThat(email.textBody()).contains("Почитувани Ada Lovelace", "Вашиот термин за Minor Service е закажан на 15.06.2026 во 09:00.");
   }
 

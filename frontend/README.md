@@ -1,4 +1,4 @@
-# CarCare ASMS Frontend
+# CarCare Frontend
 
 React 19 + TypeScript + Vite baseline for the automotive service management UI.
 

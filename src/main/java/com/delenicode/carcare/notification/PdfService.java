@@ -121,7 +121,7 @@ public class PdfService {
 
       PdfPTable header = new PdfPTable(new float[] { 0.52f, 0.48f });
       header.setWidthPercentage(100);
-      header.addCell(headerBlock("CarCare ASMS", "Авто сервис центар", Element.ALIGN_LEFT, brandFont, headerSmallFont));
+      header.addCell(headerBlock("CarCare", "", Element.ALIGN_LEFT, brandFont, headerSmallFont));
       header.addCell(headerBlock("СЕРВИСЕН ИЗВЕШТАЈ", "Бр. #" + documentNumber, Element.ALIGN_RIGHT, reportTitleFont, headerSmallFont));
       wrapper.addCell(block(header, INK, 26, 30, 18, 30));
 
@@ -202,10 +202,12 @@ public class PdfService {
     Paragraph titleParagraph = new Paragraph(title, titleFont);
     titleParagraph.setAlignment(alignment);
     titleParagraph.setSpacingAfter(6);
-    Paragraph subtitleParagraph = new Paragraph(subtitle, subtitleFont);
-    subtitleParagraph.setAlignment(alignment);
     content.add(titleParagraph);
-    content.add(subtitleParagraph);
+    if (!subtitle.isBlank()) {
+      Paragraph subtitleParagraph = new Paragraph(subtitle, subtitleFont);
+      subtitleParagraph.setAlignment(alignment);
+      content.add(subtitleParagraph);
+    }
     PdfPCell cell = new PdfPCell(content);
     cell.setBorder(Rectangle.NO_BORDER);
     cell.setBackgroundColor(INK);

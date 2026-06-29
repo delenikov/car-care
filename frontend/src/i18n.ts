@@ -2,7 +2,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 const commonMk = {
-  appName: 'CarCare ASMS',
+  appName: 'CarCare',
   login: 'Најава',
   email: 'Е-пошта',
   password: 'Лозинка',
@@ -143,7 +143,7 @@ const commonMk = {
 };
 
 const commonEn: typeof commonMk = {
-  appName: 'CarCare ASMS',
+  appName: 'CarCare',
   login: 'Login',
   email: 'Email',
   password: 'Password',
