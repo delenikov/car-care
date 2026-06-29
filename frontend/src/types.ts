@@ -15,20 +15,11 @@ export interface AuthResponse {
   user: User;
 }
 
-export interface DashboardSummary {
-  customers: number;
-  vehicles: number;
-  appointments: number;
-  serviceRecords: number;
-  offers: number;
-}
-
 export interface Customer {
   id: string;
   name: string;
   phone: string;
   email?: string;
-  loyaltyPoints: number;
   notes?: string;
 }
 

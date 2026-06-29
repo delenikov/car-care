@@ -1,5 +1,5 @@
 import { http, refreshAccessToken, refreshTokenStorage, tokenStorage, unwrap } from './http';
-import type { Appointment, AppointmentCancellationInfo, AppointmentSlot, AuthResponse, Customer, CustomerLoyaltyStatus, DashboardSummary, DocumentRecord, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
+import type { Appointment, AppointmentCancellationInfo, AppointmentSlot, AuthResponse, Customer, CustomerLoyaltyStatus, DocumentRecord, Offer, Role, ServiceRecord, User, Vehicle } from '../types';
 import { skopjeOffsetDateTime } from '../utils/dateTime';
 
 export interface LoginPayload {
@@ -24,10 +24,6 @@ export const authApi = {
     tokenStorage.clear();
     refreshTokenStorage.clear();
   }
-};
-
-export const dashboardApi = {
-  summary: () => unwrap(http.get<DashboardSummary>('/api/dashboard/summary'))
 };
 
 interface BackendCustomer {
@@ -139,7 +135,6 @@ const toCustomer = (customer: BackendCustomer): Customer => ({
   name: customer.fullName,
   email: customer.email,
   phone: customer.phone ?? '',
-  loyaltyPoints: 0,
   notes: customer.address ?? ''
 });
 
@@ -287,7 +282,7 @@ export const customersApi = {
   list: (filters?: { firstName?: string; lastName?: string }) => unwrap(http.get<BackendCustomer[]>('/api/customers', { params: filters })).then((customers) => customers.map(toCustomer)),
   get: (id: string) => unwrap(http.get<BackendCustomer>(`/api/customers/${id}`)).then(toCustomer),
   create: (payload: Omit<Customer, 'id'>) => unwrap(http.post<BackendCustomer>('/api/customers', toCustomerRequest(payload))).then(toCustomer),
-  update: (id: string, payload: Partial<Omit<Customer, 'id'>>) => unwrap(http.put<BackendCustomer>(`/api/customers/${id}`, toCustomerRequest({ name: '', phone: '', loyaltyPoints: 0, ...payload }))).then(toCustomer),
+  update: (id: string, payload: Partial<Omit<Customer, 'id'>>) => unwrap(http.put<BackendCustomer>(`/api/customers/${id}`, toCustomerRequest({ name: '', phone: '', ...payload }))).then(toCustomer),
   remove: (id: string) => unwrap(http.delete<void>(`/api/customers/${id}`)),
   vehicles: (id: string) => unwrap(http.get<BackendVehicle[]>(`/api/customers/${id}/vehicles`)).then((vehicles) => vehicles.map(toVehicle)),
   serviceHistory: (id: string) => unwrap(http.get<BackendServiceRecord[]>(`/api/customers/${id}/service-history`)).then((records) => records.map(toServiceRecord)),

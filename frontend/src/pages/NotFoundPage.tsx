@@ -7,8 +7,8 @@ export function NotFoundPage() {
       <Stack spacing={2}>
         <Typography variant="h2">404</Typography>
         <Typography color="text.secondary">Страницата не е пронајдена.</Typography>
-        <Button component={RouterLink} to="/" variant="contained">
-          Назад кон контролна табла
+        <Button component={RouterLink} to="/customers" variant="contained">
+          Назад кон клиенти
         </Button>
       </Stack>
     </Paper>

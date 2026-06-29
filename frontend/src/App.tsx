@@ -10,7 +10,6 @@ import { LoadingState } from './components/LoadingState';
 import { ToastProvider } from './components/ToastProvider';
 import { PageShell } from './components/PageShell';
 import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ResourcePage } from './pages/ResourcePages';
 import { AppointmentsPage } from './pages/AppointmentsPage';
@@ -68,7 +67,7 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
+      { index: true, element: <Navigate to="/customers" replace /> },
       { path: 'change-password', element: <ChangePasswordPage /> },
       { path: 'customers', children: resourceRoutes('customers') },
       { path: 'vehicles', children: resourceRoutes('vehicles') },

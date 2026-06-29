@@ -279,13 +279,6 @@ class CarcarePostgresIntegrationTest {
         "contentType", "application/pdf",
         "storageKey", "documents/inspection-" + suffix + ".pdf"));
 
-    JsonNode summary = get("/api/dashboard/summary", admin, 200).get("data");
-    assertThat(summary.get("customers").asInt()).isGreaterThanOrEqualTo(1);
-    assertThat(summary.get("vehicles").asInt()).isGreaterThanOrEqualTo(1);
-    assertThat(summary.get("appointments").asInt()).isGreaterThanOrEqualTo(1);
-    assertThat(summary.get("serviceRecords").asInt()).isGreaterThanOrEqualTo(1);
-    assertThat(summary.get("offers").asInt()).isGreaterThanOrEqualTo(1);
-
     long deletedCustomerId = createAndReadId("/api/customers", admin, Map.of(
         "firstName", "Delete",
         "lastName", suffix,

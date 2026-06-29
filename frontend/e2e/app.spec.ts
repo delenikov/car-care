@@ -30,6 +30,28 @@ const fail = (message: string) => ({
   data: null
 });
 
+const minimalPdf = `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] >>
+endobj
+xref
+0 4
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+trailer
+<< /Root 1 0 R /Size 4 >>
+startxref
+186
+%%EOF`;
+
 async function mockBackend(page: Page) {
   await page.route('**/api/auth/login', async (route) => {
     await route.fulfill({
@@ -44,13 +66,6 @@ async function mockBackend(page: Page) {
 
   await page.route('**/api/auth/change-password', async (route) => {
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(ok(null, 'Password changed')) });
-  });
-
-  await page.route('**/api/dashboard/summary', async (route) => {
-    await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify(ok({ customers: 2, vehicles: 1, appointments: 1, serviceRecords: 1, offers: 1 }))
-    });
   });
 
   await page.route('**/api/customers', async (route) => {
@@ -124,7 +139,7 @@ async function mockBackend(page: Page) {
     });
   });
 
-  await page.route('**/api/appointments', async (route) => {
+  await page.route(/\/api\/appointments(?:\?.*)?$/, async (route) => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON();
       await route.fulfill({
@@ -209,7 +224,7 @@ async function mockBackend(page: Page) {
   await page.route('**/api/documents/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname.endsWith('/pdf')) {
-      await route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4 document' });
+      await route.fulfill({ contentType: 'application/pdf', body: minimalPdf });
       return;
     }
     await route.fulfill({
@@ -261,20 +276,17 @@ test('redirects unauthenticated users to login', async ({ page }) => {
   await expect(page.locator('input[name="password"]')).toBeVisible();
 });
 
-test('logs in and opens the dashboard summary', async ({ page }) => {
+test('logs in and opens the customers page', async ({ page }) => {
   await page.goto('/login');
 
   await page.locator('input[name="email"]').fill('admin@carcare.test');
   await page.locator('input[name="password"]').fill('password123');
   await page.locator('button[type="submit"]').click();
 
-  await expect(page).toHaveURL('http://127.0.0.1:5173/');
+  await expect(page).toHaveURL('http://127.0.0.1:5173/customers');
   await expect(page.getByTestId('app-toast')).toHaveCount(0);
-  await expect(page.getByTestId('dashboard-hero-card')).toHaveCSS('background-image', 'none');
-  await expect(page.getByTestId('dashboard-hero-card')).toHaveCSS('background-color', 'rgb(20, 35, 31)');
-  await expect(page.getByText('Следете клиенти, возила, термини, сервисни записи и понуди од едно работно место.')).toBeVisible();
-  await expect(page.getByRole('main').getByText('Клиенти', { exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByText('Возила', { exact: true })).toBeVisible();
+  await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
+  await expect(page.locator('a[href="/customers"]')).toHaveClass(/active/);
 });
 
 test('shows specific login validation errors for missing email and wrong password', async ({ page }) => {
@@ -339,10 +351,11 @@ test('hides and blocks admin page for non-admin users', async ({ page }) => {
   await signIn(page, employee);
 
   await page.goto('/');
+  await expect(page).toHaveURL('http://127.0.0.1:5173/customers');
   await expect(page.locator('a[href="/admin"]')).toHaveCount(0);
 
   await page.goto('/admin');
-  await expect(page).toHaveURL('http://127.0.0.1:5173/');
+  await expect(page).toHaveURL('http://127.0.0.1:5173/customers');
   await expect(page.locator('a[href="/admin"]')).toHaveCount(0);
   expect(adminUsersRequested).toBe(false);
 });
@@ -654,9 +667,16 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   let appointmentPayload: Record<string, unknown> | undefined;
   let deletedAppointmentId = '';
   let availableUrl = '';
+  const visibleCalendarDate = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Skopje',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+  const visibleCalendarInputDate = visibleCalendarDate.split('-').reverse().join('.');
   let appointmentRows = [
-    { id: 301, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-15T09:00:00+02:00', endsAt: '2026-06-15T10:00:00+02:00', serviceType: 'Oil change', status: 'SCHEDULED' },
-    { id: 304, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: '2026-06-15T11:00:00+02:00', endsAt: '2026-06-15T12:00:00+02:00', serviceType: 'Cancelled check', status: 'CANCELLED' }
+    { id: 301, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: `${visibleCalendarDate}T09:00:00+02:00`, endsAt: `${visibleCalendarDate}T10:00:00+02:00`, serviceType: 'Oil change', status: 'SCHEDULED' },
+    { id: 304, customerId: 101, customerName: 'Ada Lovelace', vehicleId: 201, vehiclePlate: 'SK-1234-AA', vehicleName: 'Volkswagen Golf', scheduledAt: `${visibleCalendarDate}T11:00:00+02:00`, endsAt: `${visibleCalendarDate}T12:00:00+02:00`, serviceType: 'Cancelled check', status: 'CANCELLED' }
   ];
 
   await page.route('**/api/appointments/available**', async (route) => {
@@ -674,7 +694,7 @@ test('shows available appointments and schedules without conflicts', async ({ pa
     });
   });
 
-  await page.route('**/api/appointments', async (route) => {
+  await page.route(/\/api\/appointments(?:\?.*)?$/, async (route) => {
     const request = route.request();
     if (request.method() === 'POST') {
       appointmentPayload = request.postDataJSON();
@@ -734,9 +754,9 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   await expect(page.getByText('Терминот мора да биде во работно време од 08:00 до 16:00.').first()).toBeVisible();
   expect(appointmentPayload).toBeUndefined();
 
-  await fillDatePickerGroup(page, 'Почеток датум', '15.06.2026');
+  await fillDatePickerGroup(page, 'Почеток датум', visibleCalendarInputDate);
   await fillTimePickerGroup(page, 'Почеток време', '09:30');
-  await fillDatePickerGroup(page, 'Крај датум', '15.06.2026');
+  await fillDatePickerGroup(page, 'Крај датум', visibleCalendarInputDate);
   await fillTimePickerGroup(page, 'Крај време', '10:30');
   await page.locator('button[type="submit"]').click();
   await expect(page.getByText('Терминот се преклопува со постоечки термин.').first()).toBeVisible();
@@ -1015,7 +1035,7 @@ test('sends generated service documents and exports PDFs', async ({ page }) => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname.endsWith('/pdf')) {
       documentPdfCalled = true;
-      await route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4 document' });
+      await route.fulfill({ contentType: 'application/pdf', body: minimalPdf });
       return;
     }
     if (pathname.endsWith('/send')) {

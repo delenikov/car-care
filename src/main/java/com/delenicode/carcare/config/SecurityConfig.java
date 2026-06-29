@@ -38,7 +38,6 @@ public class SecurityConfig {
             .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/appointments/available", "/api/appointments/cancel-info/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/appointments/public", "/api/appointments/cancel", "/api/appointments/cancel/**").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/dashboard/summary").authenticated()
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .anyRequest().authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

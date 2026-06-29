@@ -17,7 +17,6 @@ import {
   Toolbar,
   Typography
 } from '@mui/material';
-import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import EventRoundedIcon from '@mui/icons-material/EventRounded';
@@ -34,7 +33,6 @@ import type { Role } from '../types';
 const drawerWidth = 280;
 
 const navItems = [
-  { to: '/', label: 'dashboard', icon: <DashboardRoundedIcon /> },
   { to: '/customers', label: 'customers', icon: <GroupsRoundedIcon /> },
   { to: '/vehicles', label: 'vehicles', icon: <DirectionsCarRoundedIcon /> },
   { to: '/appointments', label: 'appointments', icon: <EventRoundedIcon /> },
@@ -71,7 +69,7 @@ function DrawerContent({ onNavigate }: { onNavigate?: () => void }) {
             key={item.to}
             component={NavLink}
             to={item.to}
-            end={item.to === '/'}
+            end
             onClick={onNavigate}
             sx={{
               borderRadius: 3,

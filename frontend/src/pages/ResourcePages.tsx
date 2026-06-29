@@ -5,7 +5,6 @@ import {
   Autocomplete,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Divider,
   IconButton,
@@ -45,7 +44,6 @@ const customerSchema = z.object({
   name: z.string().min(1, 'Customer name is required'),
   phone: z.string().min(1, 'Phone is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  loyaltyPoints: z.coerce.number().min(0),
   notes: z.string().optional()
 });
 
@@ -101,7 +99,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
   });
   const { control, handleSubmit, reset, setError, formState } = useForm<CustomerForm>({
     resolver: zodResolver(customerSchema) as never,
-    defaultValues: { name: '', phone: '', email: '', loyaltyPoints: 0, notes: '' }
+    defaultValues: { name: '', phone: '', email: '', notes: '' }
   });
   const createMutation = useMutation({ mutationFn: customersApi.create });
   const updateMutation = useMutation({ mutationFn: (values: CustomerForm) => customersApi.update(id!, values) });
@@ -183,7 +181,6 @@ function CustomerPage({ mode }: { mode: Mode }) {
             rows={[
               [t('phone'), detailQuery.data.phone],
               [t('email'), detailQuery.data.email ?? '-'],
-              [t('loyaltyPoints'), String(detailQuery.data.loyaltyPoints)],
               [t('address'), detailQuery.data.notes ?? '-']
             ]}
           />
@@ -225,7 +222,6 @@ function CustomerPage({ mode }: { mode: Mode }) {
           <FormTextField control={control} name="name" label={t('fullName')} />
           <FormTextField control={control} name="phone" label={t('phone')} />
           <FormTextField control={control} name="email" label={t('email')} />
-          <FormTextField control={control} name="loyaltyPoints" label={t('loyaltyPoints')} type="number" />
           <FormTextField control={control} name="notes" label={t('address')} multiline minRows={3} sx={{ gridColumn: { md: '1 / -1' } }} />
         </Box>
         <Button sx={{ mt: 3 }} type="submit" variant="contained" disabled={formState.isSubmitting}>
@@ -458,7 +454,6 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
           <TableRow>
             <TableCell>{t('customer')}</TableCell>
             <TableCell>{t('phone')}</TableCell>
-            <TableCell>{t('loyalty')}</TableCell>
             <TableCell align="right">{t('action')}</TableCell>
           </TableRow>
         </TableHead>
@@ -467,9 +462,6 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
             <TableRow key={customer.id} hover>
               <TableCell>{customer.name}</TableCell>
               <TableCell>{customer.phone}</TableCell>
-              <TableCell>
-                <Chip label={customer.loyaltyPoints} color="secondary" size="small" />
-              </TableCell>
               <TableCell align="right">
                 <Button component={RouterLink} to={`/customers/${customer.id}`}>
                   {t('details')}

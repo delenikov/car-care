@@ -85,7 +85,7 @@ backend/src/main/java/com/delenicode/carcare
 ```
 
 Feature packages include `auth`, `user`, `customer`, `vehicle`, `appointment`,
-`servicerecord`, `offer`, `document`, `dashboard`, and `loyalty`.
+`servicerecord`, `offer`, `document`, and `loyalty`.
 
 Within each feature package, use consistent subpackages:
 
