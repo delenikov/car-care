@@ -399,6 +399,7 @@ test('searches customers and shows customer vehicles and service history', async
   await signIn(page);
   let searchUrl = '';
   let deletedCustomerId = '';
+  let updatePayload: Record<string, unknown> | undefined;
 
   await page.route('**/api/customers**', async (route) => {
     const request = route.request();
@@ -422,6 +423,14 @@ test('searches customers and shows customer vehicles and service history', async
       await route.fulfill({
         contentType: 'application/json',
         body: JSON.stringify(ok([{ id: '401', customerId: '101', vehicleId: '201', serviceDate: '2026-06-12', serviceType: 'Oil and filters', totalAmount: 3500, odometer: 123456 }]))
+      });
+      return;
+    }
+    if (request.method() === 'PUT') {
+      updatePayload = request.postDataJSON();
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(ok({ id: '101', ...updatePayload }))
       });
       return;
     }
@@ -451,6 +460,14 @@ test('searches customers and shows customer vehicles and service history', async
   await expect(page.locator('a[href="/services/new?customerId=101&vehicleId=201"]')).toBeVisible();
   await expect(page.getByText('Сервисна историја')).toBeVisible();
   await expect(page.getByText('Oil and filters')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Уреди' }).click();
+  await expect(page).toHaveURL(/\/customers\/101$/);
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.locator('input[name="phone"]').fill('+38970999999');
+  await page.getByRole('dialog').getByRole('button', { name: 'Зачувај' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  expect(updatePayload).toMatchObject({ phone: '+38970999999' });
 
   await page.getByRole('button', { name: 'Избриши' }).click();
   await expect(page).toHaveURL(/\/customers$/);
@@ -553,12 +570,14 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
     engine: '1.8'
   });
 
-  await page.goto('/vehicles/202/edit');
+  await page.getByRole('button', { name: 'Уреди' }).click();
+  await expect(page).toHaveURL(/\/vehicles\/202$/);
+  await expect(page.getByRole('dialog')).toBeVisible();
   await page.locator('input[name="plate"]').fill('OH-7777-AA');
   await page.locator('input[name="year"]').fill('2023');
   await page.locator('input[name="fuelType"]').fill('Petrol');
   await page.locator('input[name="engine"]').fill('2.0');
-  await page.locator('button[type="submit"]').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Зачувај' }).click();
 
   await expect(page).toHaveURL(/\/vehicles\/202$/);
   expect(updatePayload).toMatchObject({

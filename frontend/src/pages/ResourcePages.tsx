@@ -31,6 +31,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded';
@@ -93,6 +94,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [errorMessage, setErrorMessage] = useState('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [filters, setFilters] = useState({ firstName: '', lastName: '' });
   const [submittedFilters, setSubmittedFilters] = useState(filters);
   const listQuery = useQuery({
@@ -168,47 +170,6 @@ function CustomerPage({ mode }: { mode: Mode }) {
     );
   }
 
-  if (mode === 'detail') {
-    if (detailQuery.isLoading) return <LoadingState />;
-    if (detailQuery.isError) return <ErrorState error={detailQuery.error} />;
-    if (!detailQuery.data) return <EmptyState />;
-    return (
-      <ResourceFrame title={detailQuery.data.name} actionLabel={t('edit')} actionTo={`/customers/${id}/edit`}>
-        <Stack spacing={3}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end">
-            <Button
-              color="error"
-              variant="outlined"
-              startIcon={<DeleteOutlineRoundedIcon />}
-              disabled={deleteMutation.isPending}
-              onClick={async () => {
-                try {
-                  await deleteMutation.mutateAsync(id!);
-                  await queryClient.invalidateQueries({ queryKey: ['customers'] });
-                  showToast(t('deleted'));
-                  navigate('/customers');
-                } catch (error) {
-                  showToast(apiErrorMessage(error, t('deleteFailed')), 'error');
-                }
-              }}
-            >
-              {t('delete')}
-            </Button>
-          </Stack>
-          <DetailCard
-            rows={[
-              [t('phone'), detailQuery.data.phone],
-              [t('email'), detailQuery.data.email ?? '-'],
-              [t('address'), detailQuery.data.notes ?? '-']
-            ]}
-          />
-          <RelatedVehicles vehicles={vehiclesQuery.data ?? []} loading={vehiclesQuery.isLoading} />
-          <ServiceHistory records={historyQuery.data ?? []} loading={historyQuery.isLoading} />
-        </Stack>
-      </ResourceFrame>
-    );
-  }
-
   if (mode === 'edit' && detailQuery.isLoading) return <LoadingState />;
   if (mode === 'edit' && detailQuery.isError) return <ErrorState error={detailQuery.error} />;
 
@@ -218,6 +179,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
       const saved = mode === 'create' ? await createMutation.mutateAsync(values) : await updateMutation.mutateAsync(values);
       await queryClient.invalidateQueries({ queryKey: ['customers'] });
       showToast(t(mode === 'create' ? 'saved' : 'updated'));
+      setEditDialogOpen(false);
       navigate(`/customers/${saved.id}`);
     } catch (error) {
       applyApiFieldErrors(error, setError, {
@@ -303,6 +265,86 @@ function CustomerPage({ mode }: { mode: Mode }) {
     );
   }
 
+  if (mode === 'detail') {
+    if (detailQuery.isLoading) return <LoadingState />;
+    if (detailQuery.isError) return <ErrorState error={detailQuery.error} />;
+    if (!detailQuery.data) return <EmptyState />;
+    return (
+      <>
+        <ResourceFrame title={detailQuery.data.name}>
+          <Stack spacing={3}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end">
+              <Button variant="contained" startIcon={<EditRoundedIcon />} onClick={() => setEditDialogOpen(true)}>
+                {t('edit')}
+              </Button>
+              <Button
+                color="error"
+                variant="outlined"
+                startIcon={<DeleteOutlineRoundedIcon />}
+                disabled={deleteMutation.isPending}
+                onClick={async () => {
+                  try {
+                    await deleteMutation.mutateAsync(id!);
+                    await queryClient.invalidateQueries({ queryKey: ['customers'] });
+                    showToast(t('deleted'));
+                    navigate('/customers');
+                  } catch (error) {
+                    showToast(apiErrorMessage(error, t('deleteFailed')), 'error');
+                  }
+                }}
+              >
+                {t('delete')}
+              </Button>
+            </Stack>
+            <DetailCard
+              rows={[
+                [t('phone'), detailQuery.data.phone],
+                [t('email'), detailQuery.data.email ?? '-'],
+                [t('address'), detailQuery.data.notes ?? '-']
+              ]}
+            />
+            <RelatedVehicles vehicles={vehiclesQuery.data ?? []} loading={vehiclesQuery.isLoading} />
+            <ServiceHistory records={historyQuery.data ?? []} loading={historyQuery.isLoading} />
+          </Stack>
+        </ResourceFrame>
+        {editDialogOpen ? (
+          <ResourceFormDialog
+            title={`${t('edit')} ${detailQuery.data.name}`}
+            onClose={() => setEditDialogOpen(false)}
+            onSubmit={onSubmit}
+            isSubmitting={formState.isSubmitting}
+          >
+            {customerForm}
+          </ResourceFormDialog>
+        ) : null}
+      </>
+    );
+  }
+
+  if (mode === 'edit' && detailQuery.data) {
+    return (
+      <>
+        <ResourceFrame title={detailQuery.data.name}>
+          <DetailCard
+            rows={[
+              [t('phone'), detailQuery.data.phone],
+              [t('email'), detailQuery.data.email ?? '-'],
+              [t('address'), detailQuery.data.notes ?? '-']
+            ]}
+          />
+        </ResourceFrame>
+        <ResourceFormDialog
+          title={formTitle}
+          closeTo={`/customers/${id}`}
+          onSubmit={onSubmit}
+          isSubmitting={formState.isSubmitting}
+        >
+          {customerForm}
+        </ResourceFormDialog>
+      </>
+    );
+  }
+
   return (
     <ResourceFrame title={formTitle}>
       <Paper
@@ -339,6 +381,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [errorMessage, setErrorMessage] = useState('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
   const listQuery = useQuery({
@@ -423,34 +466,6 @@ function VehiclePage({ mode }: { mode: Mode }) {
     );
   }
 
-  if (mode === 'detail') {
-    if (detailQuery.isLoading) return <LoadingState />;
-    if (detailQuery.isError) return <ErrorState error={detailQuery.error} />;
-    if (!detailQuery.data) return <EmptyState />;
-    return (
-      <ResourceFrame title={`${detailQuery.data.make} ${detailQuery.data.model}`} actionLabel={t('edit')} actionTo={`/vehicles/${id}/edit`}>
-        <Stack spacing={3}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end">
-            <Button component={RouterLink} to={`/services/new?customerId=${detailQuery.data.customerId}&vehicleId=${detailQuery.data.id}`} variant="contained" startIcon={<AddRoundedIcon />}>
-              {t('newService')}
-            </Button>
-          </Stack>
-          <DetailCard
-            rows={[
-              [t('licensePlate'), detailQuery.data.plate],
-              [t('owner'), detailQuery.data.customerName ?? detailQuery.data.customerId],
-              [t('year'), String(detailQuery.data.year)],
-              [t('vin'), detailQuery.data.vin ?? '-'],
-              [t('fuelType'), detailQuery.data.fuelType ?? '-'],
-              [t('engine'), detailQuery.data.engine ?? '-']
-            ]}
-          />
-          <ServiceHistory records={historyQuery.data ?? []} loading={historyQuery.isLoading} />
-        </Stack>
-      </ResourceFrame>
-    );
-  }
-
   if (mode === 'edit' && detailQuery.isLoading) return <LoadingState />;
   if (mode === 'edit' && detailQuery.isError) return <ErrorState error={detailQuery.error} />;
 
@@ -460,6 +475,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
       const saved = mode === 'create' ? await createMutation.mutateAsync(values) : await updateMutation.mutateAsync(values);
       await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       showToast(t(mode === 'create' ? 'saved' : 'updated'));
+      setEditDialogOpen(false);
       navigate(`/vehicles/${saved.id}`);
     } catch (error) {
       applyApiFieldErrors(error, setError, {
@@ -592,6 +608,76 @@ function VehiclePage({ mode }: { mode: Mode }) {
     );
   }
 
+  if (mode === 'detail') {
+    if (detailQuery.isLoading) return <LoadingState />;
+    if (detailQuery.isError) return <ErrorState error={detailQuery.error} />;
+    if (!detailQuery.data) return <EmptyState />;
+    return (
+      <>
+        <ResourceFrame title={`${detailQuery.data.make} ${detailQuery.data.model}`}>
+          <Stack spacing={3}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end">
+              <Button variant="outlined" startIcon={<EditRoundedIcon />} onClick={() => setEditDialogOpen(true)}>
+                {t('edit')}
+              </Button>
+              <Button component={RouterLink} to={`/services/new?customerId=${detailQuery.data.customerId}&vehicleId=${detailQuery.data.id}`} variant="contained" startIcon={<AddRoundedIcon />}>
+                {t('newService')}
+              </Button>
+            </Stack>
+            <DetailCard
+              rows={[
+                [t('licensePlate'), detailQuery.data.plate],
+                [t('owner'), detailQuery.data.customerName ?? detailQuery.data.customerId],
+                [t('year'), String(detailQuery.data.year)],
+                [t('vin'), detailQuery.data.vin ?? '-'],
+                [t('fuelType'), detailQuery.data.fuelType ?? '-'],
+                [t('engine'), detailQuery.data.engine ?? '-']
+              ]}
+            />
+            <ServiceHistory records={historyQuery.data ?? []} loading={historyQuery.isLoading} />
+          </Stack>
+        </ResourceFrame>
+        {editDialogOpen ? (
+          <ResourceFormDialog
+            title={`${t('edit')} ${detailQuery.data.plate}`}
+            onClose={() => setEditDialogOpen(false)}
+            onSubmit={onSubmit}
+            isSubmitting={formState.isSubmitting}
+          >
+            {vehicleForm}
+          </ResourceFormDialog>
+        ) : null}
+      </>
+    );
+  }
+
+  if (mode === 'edit' && detailQuery.data) {
+    return (
+      <>
+        <ResourceFrame title={`${detailQuery.data.make} ${detailQuery.data.model}`}>
+          <DetailCard
+            rows={[
+              [t('licensePlate'), detailQuery.data.plate],
+              [t('owner'), detailQuery.data.customerName ?? detailQuery.data.customerId],
+              [t('year'), String(detailQuery.data.year)],
+              [t('vin'), detailQuery.data.vin ?? '-'],
+              [t('fuelType'), detailQuery.data.fuelType ?? '-'],
+              [t('engine'), detailQuery.data.engine ?? '-']
+            ]}
+          />
+        </ResourceFrame>
+        <ResourceFormDialog
+          title={formTitle}
+          closeTo={`/vehicles/${id}`}
+          onSubmit={onSubmit}
+          isSubmitting={formState.isSubmitting}
+        >
+          {vehicleForm}
+        </ResourceFormDialog>
+      </>
+    );
+  }
+
   return (
     <ResourceFrame title={formTitle}>
       <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
@@ -609,25 +695,36 @@ function VehiclePage({ mode }: { mode: Mode }) {
 function ResourceFormDialog({
   title,
   closeTo,
+  onClose,
   children,
   onSubmit,
   isSubmitting
 }: {
   title: string;
-  closeTo: string;
+  closeTo?: string;
+  onClose?: () => void;
   children: React.ReactNode;
   onSubmit: React.FormEventHandler<HTMLFormElement>;
   isSubmitting: boolean;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const closeDialog = () => {
+    if (onClose) {
+      onClose();
+      return;
+    }
+    if (closeTo) {
+      navigate(closeTo);
+    }
+  };
 
   return (
     <Dialog
       open
       fullWidth
       maxWidth="sm"
-      onClose={() => navigate(closeTo)}
+      onClose={closeDialog}
       PaperProps={{
         component: 'form',
         onSubmit,
@@ -640,7 +737,7 @@ function ResourceFormDialog({
     >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, px: 3, py: 2 }}>
         <Typography variant="h5">{title}</Typography>
-        <IconButton component={RouterLink} to={closeTo} aria-label={t('cancel')} edge="end">
+        <IconButton onClick={closeDialog} aria-label={t('cancel')} edge="end">
           <CloseRoundedIcon />
         </IconButton>
       </DialogTitle>
@@ -648,7 +745,7 @@ function ResourceFormDialog({
       <DialogContent sx={{ p: 3 }}>{children}</DialogContent>
       <Divider />
       <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
-        <Button component={RouterLink} to={closeTo} variant="outlined">
+        <Button onClick={closeDialog} variant="outlined">
           {t('cancel')}
         </Button>
         <Button type="submit" variant="contained" startIcon={<SaveRoundedIcon />} disabled={isSubmitting}>
