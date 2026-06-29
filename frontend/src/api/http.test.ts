@@ -1,6 +1,6 @@
 import axios, { type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { http, refreshTokenStorage, tokenStorage } from './http';
+import { apiErrorMessage, apiFieldErrors, http, normalizeApiError, refreshTokenStorage, tokenStorage } from './http';
 
 const ok = <T>(config: InternalAxiosRequestConfig, data: T): AxiosResponse<T> => ({
   data,
@@ -101,5 +101,61 @@ describe('HTTP token refresh', () => {
     expect(adapter).toHaveBeenCalledTimes(1);
     expect(tokenStorage.get()).toBe('fresh-access-token');
     expect(refreshTokenStorage.get()).toBe('fresh-refresh-token');
+  });
+});
+
+describe('HTTP API errors', () => {
+  it('normalizes global exception handler responses', () => {
+    const error = {
+      isAxiosError: true,
+      response: {
+        status: 400,
+        data: {
+          timestamp: '2026-06-19T10:00:00Z',
+          status: 400,
+          error: 'VALIDATION_ERROR',
+          message: 'Валидацијата не успеа.',
+          path: '/api/customers',
+          fieldErrors: {
+            fullName: 'Полето е задолжително',
+            email: 'Внесете валидна е-пошта'
+          }
+        }
+      }
+    };
+
+    const normalized = normalizeApiError(error);
+
+    expect(normalized.message).toBe('Валидацијата не успеа.');
+    expect(normalized.status).toBe(400);
+    expect(normalized.code).toBe('VALIDATION_ERROR');
+    expect(normalized.path).toBe('/api/customers');
+    expect(normalized.fieldErrors).toEqual({
+      fullName: 'Полето е задолжително',
+      email: 'Внесете валидна е-пошта'
+    });
+  });
+
+  it('exposes message and field errors through UI helpers', () => {
+    const error = {
+      isAxiosError: true,
+      response: {
+        status: 404,
+        data: {
+          status: 404,
+          error: 'NOT_FOUND',
+          message: 'Customer not found',
+          path: '/api/customers/1',
+          fieldErrors: {}
+        }
+      }
+    };
+
+    expect(apiErrorMessage(error, 'Fallback')).toBe('Customer not found');
+    expect(apiFieldErrors(error)).toEqual({});
+  });
+
+  it('falls back for non API errors', () => {
+    expect(apiErrorMessage({ isAxiosError: true, response: { status: 500, data: {} } }, 'Fallback')).toBe('Fallback');
   });
 });

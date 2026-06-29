@@ -31,10 +31,12 @@ import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { customersApi, vehiclesApi } from '../api/modules';
+import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { FormTextField } from '../components/FormTextField';
-import { EmptyState, LoadingState } from '../components/LoadingState';
+import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { Customer, ServiceRecord, Vehicle } from '../types';
+import { applyApiFieldErrors } from '../utils/apiFormErrors';
 
 type Kind = 'customers' | 'vehicles';
 type Mode = 'list' | 'create' | 'detail' | 'edit';
@@ -74,6 +76,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const [errorMessage, setErrorMessage] = useState('');
   const [filters, setFilters] = useState({ firstName: '', lastName: '' });
   const [submittedFilters, setSubmittedFilters] = useState(filters);
   const listQuery = useQuery({
@@ -96,7 +99,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
     queryFn: () => customersApi.serviceHistory(id!),
     enabled: Boolean(id) && mode === 'detail'
   });
-  const { control, handleSubmit, reset, formState } = useForm<CustomerForm>({
+  const { control, handleSubmit, reset, setError, formState } = useForm<CustomerForm>({
     resolver: zodResolver(customerSchema) as never,
     defaultValues: { name: '', phone: '', email: '', loyaltyPoints: 0, notes: '' }
   });
@@ -112,6 +115,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
 
   if (mode === 'list') {
     if (listQuery.isLoading) return <LoadingState />;
+    if (listQuery.isError) return <ErrorState error={listQuery.error} />;
     return (
       <ResourceFrame title={t('customers')} actionLabel={t('newCustomer')} actionTo="/customers/new" actionIcon={<AddRoundedIcon />}>
         <Paper sx={{ p: 2 }}>
@@ -150,6 +154,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
 
   if (mode === 'detail') {
     if (detailQuery.isLoading) return <LoadingState />;
+    if (detailQuery.isError) return <ErrorState error={detailQuery.error} />;
     if (!detailQuery.data) return <EmptyState />;
     return (
       <ResourceFrame title={detailQuery.data.name} actionLabel={t('edit')} actionTo={`/customers/${id}/edit`}>
@@ -161,10 +166,14 @@ function CustomerPage({ mode }: { mode: Mode }) {
               startIcon={<DeleteOutlineRoundedIcon />}
               disabled={deleteMutation.isPending}
               onClick={async () => {
-                await deleteMutation.mutateAsync(id!);
-                await queryClient.invalidateQueries({ queryKey: ['customers'] });
-                showToast(t('deleted'));
-                navigate('/customers');
+                try {
+                  await deleteMutation.mutateAsync(id!);
+                  await queryClient.invalidateQueries({ queryKey: ['customers'] });
+                  showToast(t('deleted'));
+                  navigate('/customers');
+                } catch (error) {
+                  showToast(apiErrorMessage(error, t('deleteFailed')), 'error');
+                }
               }}
             >
               {t('delete')}
@@ -185,16 +194,33 @@ function CustomerPage({ mode }: { mode: Mode }) {
     );
   }
 
+  if (mode === 'edit' && detailQuery.isLoading) return <LoadingState />;
+  if (mode === 'edit' && detailQuery.isError) return <ErrorState error={detailQuery.error} />;
+
   const onSubmit = handleSubmit(async (values) => {
-    const saved = mode === 'create' ? await createMutation.mutateAsync(values) : await updateMutation.mutateAsync(values);
-    await queryClient.invalidateQueries({ queryKey: ['customers'] });
-    showToast(t(mode === 'create' ? 'saved' : 'updated'));
-    navigate(`/customers/${saved.id}`);
+    setErrorMessage('');
+    try {
+      const saved = mode === 'create' ? await createMutation.mutateAsync(values) : await updateMutation.mutateAsync(values);
+      await queryClient.invalidateQueries({ queryKey: ['customers'] });
+      showToast(t(mode === 'create' ? 'saved' : 'updated'));
+      navigate(`/customers/${saved.id}`);
+    } catch (error) {
+      applyApiFieldErrors(error, setError, {
+        firstName: 'name',
+        lastName: 'name',
+        fullName: 'name',
+        address: 'notes'
+      });
+      setErrorMessage(apiErrorMessage(error, t('saveFailed')));
+    }
   });
 
   return (
     <ResourceFrame title={mode === 'create' ? `${t('create')} ${t('customers')}` : `${t('edit')} ${detailQuery.data?.name ?? ''}`}>
       <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
+        <Box sx={{ mb: 3 }}>
+          <ApiErrorAlert message={errorMessage} />
+        </Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
           <FormTextField control={control} name="name" label={t('fullName')} />
           <FormTextField control={control} name="phone" label={t('phone')} />
@@ -216,6 +242,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const [errorMessage, setErrorMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
   const listQuery = useQuery({
@@ -238,7 +265,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
     queryFn: () => customersApi.list(),
     enabled: mode !== 'list'
   });
-  const { control, handleSubmit, reset, formState } = useForm<VehicleForm>({
+  const { control, handleSubmit, reset, setError, formState } = useForm<VehicleForm>({
     resolver: zodResolver(vehicleSchema) as never,
     defaultValues: { customerId: '', plate: '', make: '', model: '', year: new Date().getFullYear(), vin: '', fuelType: '', engine: '' }
   });
@@ -253,6 +280,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
 
   if (mode === 'list') {
     if (listQuery.isLoading) return <LoadingState />;
+    if (listQuery.isError) return <ErrorState error={listQuery.error} />;
     const resetSearch = () => {
       setSearchTerm('');
       setSubmittedSearchTerm('');
@@ -301,6 +329,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
 
   if (mode === 'detail') {
     if (detailQuery.isLoading) return <LoadingState />;
+    if (detailQuery.isError) return <ErrorState error={detailQuery.error} />;
     if (!detailQuery.data) return <EmptyState />;
     return (
       <ResourceFrame title={`${detailQuery.data.make} ${detailQuery.data.model}`} actionLabel={t('edit')} actionTo={`/vehicles/${id}/edit`}>
@@ -326,16 +355,31 @@ function VehiclePage({ mode }: { mode: Mode }) {
     );
   }
 
+  if (mode === 'edit' && detailQuery.isLoading) return <LoadingState />;
+  if (mode === 'edit' && detailQuery.isError) return <ErrorState error={detailQuery.error} />;
+
   const onSubmit = handleSubmit(async (values) => {
-    const saved = mode === 'create' ? await createMutation.mutateAsync(values) : await updateMutation.mutateAsync(values);
-    await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-    showToast(t(mode === 'create' ? 'saved' : 'updated'));
-    navigate(`/vehicles/${saved.id}`);
+    setErrorMessage('');
+    try {
+      const saved = mode === 'create' ? await createMutation.mutateAsync(values) : await updateMutation.mutateAsync(values);
+      await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      showToast(t(mode === 'create' ? 'saved' : 'updated'));
+      navigate(`/vehicles/${saved.id}`);
+    } catch (error) {
+      applyApiFieldErrors(error, setError, {
+        plateNumber: 'plate',
+        modelYear: 'year'
+      });
+      setErrorMessage(apiErrorMessage(error, t('saveFailed')));
+    }
   });
 
   return (
     <ResourceFrame title={mode === 'create' ? `${t('create')} ${t('vehicles')}` : `${t('edit')} ${detailQuery.data?.plate ?? ''}`}>
       <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
+        <Box sx={{ mb: 3 }}>
+          <ApiErrorAlert message={errorMessage} />
+        </Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
           <Controller
             control={control}

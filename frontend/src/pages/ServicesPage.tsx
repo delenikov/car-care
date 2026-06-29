@@ -19,16 +19,19 @@ import {
   Typography
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { customersApi, serviceRecordsApi } from '../api/modules';
+import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { DateInput, TimeInput } from '../components/DateTimeInputs';
 import { FormTextField } from '../components/FormTextField';
-import { EmptyState, LoadingState } from '../components/LoadingState';
+import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { Customer, ServiceRecord, Vehicle } from '../types';
+import { applyApiFieldErrors } from '../utils/apiFormErrors';
 import { skopjeDate, skopjeTime } from '../utils/dateTime';
 
 const schema = z.object({
@@ -59,10 +62,11 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const [errorMessage, setErrorMessage] = useState('');
   const listQuery = useQuery({ queryKey: ['service-records'], queryFn: serviceRecordsApi.list, enabled: mode === 'list' });
   const detailQuery = useQuery({ queryKey: ['service-records', id], queryFn: () => serviceRecordsApi.get(id!), enabled: mode === 'detail' && Boolean(id) });
   const createMutation = useMutation({ mutationFn: serviceRecordsApi.create });
-  const { clearErrors, control, handleSubmit, setValue, formState } = useForm<ServiceForm>({
+  const { clearErrors, control, handleSubmit, setError, setValue, formState } = useForm<ServiceForm>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
       customerId: searchParams.get('customerId') ?? '',
@@ -96,25 +100,40 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
 
   if (mode === 'create') {
     const onSubmit = handleSubmit(async (values) => {
-      const { parts, serviceTime: _serviceTime, ...serviceValues } = values;
-      void _serviceTime;
-      const replacedParts = parts.map((part) => `${part.name} (${Number(part.price).toLocaleString('mk-MK')} ден.)`).join(', ');
-      const computedPartsCost = sumParts(parts);
-      await createMutation.mutateAsync({
-        ...serviceValues,
-        replacedParts,
-        partsCost: computedPartsCost,
-        cost: computedPartsCost + values.laborCost
-      });
-      await queryClient.invalidateQueries({ queryKey: ['service-records'] });
-      showToast(t('saved'));
-      navigate('/services');
+      setErrorMessage('');
+      try {
+        const { parts, serviceTime: _serviceTime, ...serviceValues } = values;
+        void _serviceTime;
+        const replacedParts = parts.map((part) => `${part.name} (${Number(part.price).toLocaleString('mk-MK')} ден.)`).join(', ');
+        const computedPartsCost = sumParts(parts);
+        await createMutation.mutateAsync({
+          ...serviceValues,
+          replacedParts,
+          partsCost: computedPartsCost,
+          cost: computedPartsCost + values.laborCost
+        });
+        await queryClient.invalidateQueries({ queryKey: ['service-records'] });
+        showToast(t('saved'));
+        navigate('/services');
+      } catch (error) {
+        applyApiFieldErrors(error, setError, {
+          serviceDate: 'performedAt',
+          serviceType: 'summary',
+          totalAmount: 'laborCost',
+          odometer: 'mileage',
+          replacedParts: 'parts'
+        });
+        setErrorMessage(apiErrorMessage(error, t('saveFailed')));
+      }
     });
 
     return (
       <Stack spacing={3}>
         <Typography variant="h2">{t('newService')}</Typography>
         <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
+          <Box sx={{ mb: 3 }}>
+            <ApiErrorAlert message={errorMessage} />
+          </Box>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
             <Controller
               control={control}
@@ -269,6 +288,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
 
   if (mode === 'detail') {
     if (detailQuery.isLoading) return <LoadingState />;
+    if (detailQuery.isError) return <ErrorState error={detailQuery.error} />;
     const record = detailQuery.data;
     if (!record) return <EmptyState />;
 
@@ -343,6 +363,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
   }
 
   if (listQuery.isLoading) return <LoadingState />;
+  if (listQuery.isError) return <ErrorState error={listQuery.error} />;
   const records = listQuery.data ?? [];
 
   return (

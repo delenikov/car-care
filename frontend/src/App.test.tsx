@@ -45,26 +45,26 @@ describe('ASMS frontend baseline', () => {
 
   it('shows the login credential message returned by the API', async () => {
     const user = userEvent.setup();
-    vi.spyOn(authApi, 'login').mockRejectedValueOnce({ response: { data: { message: 'Password is wrong' } } });
+    vi.spyOn(authApi, 'login').mockRejectedValueOnce({ response: { data: { message: 'Лозинката е погрешна' } } });
     const { container } = renderWithProviders(<LoginPage />);
 
     await user.type(container.querySelector('input[name="email"]')!, 'admin@carcare.test');
     await user.type(container.querySelector('input[name="password"]')!, 'wrong-password');
     await user.click(screen.getByRole('button'));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Password is wrong');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Лозинката е погрешна');
   });
 
   it('shows the change password message returned by the API', async () => {
     const user = userEvent.setup();
-    vi.spyOn(authApi, 'changePassword').mockRejectedValueOnce({ response: { data: { message: 'Invalid current password' } } });
+    vi.spyOn(authApi, 'changePassword').mockRejectedValueOnce({ response: { data: { message: 'Тековната лозинка е погрешна' } } });
     const { container } = renderWithProviders(<ChangePasswordPage />);
 
     await user.type(container.querySelector('input[name="currentPassword"]')!, 'wrong-password');
     await user.type(container.querySelector('input[name="newPassword"]')!, 'password456');
     await user.click(screen.getByRole('button'));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid current password');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Тековната лозинка е погрешна');
   });
 
   it('shows the admin navigation item only for admin users', async () => {

@@ -15,10 +15,11 @@ import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DateInput, DateTimeInput } from '../components/DateTimeInputs';
 import { FormTextField } from '../components/FormTextField';
-import { LoadingState } from '../components/LoadingState';
+import { ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import { BUSINESS_TIME_ZONE } from '../config/timeZone';
 import type { Appointment, Customer, Vehicle } from '../types';
+import { applyApiFieldErrors } from '../utils/apiFormErrors';
 import {
   fullCalendarBusinessDateTimeInput,
   fullCalendarBusinessOffsetDateTime,
@@ -78,7 +79,7 @@ export function AppointmentsPage() {
     }),
     [t]
   );
-  const { data = [], isLoading } = useQuery({
+  const { data = [], error: appointmentsError, isError: appointmentsIsError, isLoading } = useQuery({
     queryKey: ['appointments'],
     queryFn: appointmentsApi.list,
     refetchInterval: 30_000,
@@ -162,8 +163,11 @@ export function AppointmentsPage() {
       showToast(t('saved'));
     } catch (error) {
       const message = apiErrorMessage(error, t('appointmentSaveFailed'));
-      setError('startsAt', { type: 'server', message });
-      setError('endsAt', { type: 'server', message });
+      const fieldErrors = applyApiFieldErrors(error, setError);
+      if (!Object.keys(fieldErrors).length) {
+        setError('startsAt', { type: 'server', message });
+        setError('endsAt', { type: 'server', message });
+      }
       setErrorMessage(message);
     }
   });
@@ -179,9 +183,9 @@ export function AppointmentsPage() {
       await rescheduleMutation.mutateAsync({ id: info.event.id, startsAt, endsAt });
       await queryClient.invalidateQueries({ queryKey: ['appointments'] });
       showToast(t('updated'));
-    } catch {
+    } catch (error) {
       info.revert();
-      showToast(t('rescheduleFailed'), 'error');
+      showToast(apiErrorMessage(error, t('rescheduleFailed')), 'error');
     }
   };
 
@@ -209,6 +213,7 @@ export function AppointmentsPage() {
   };
 
   if (isLoading) return <LoadingState />;
+  if (appointmentsIsError) return <ErrorState error={appointmentsError} />;
 
   return (
     <Stack spacing={3}>
@@ -269,18 +274,22 @@ export function AppointmentsPage() {
               onChange={(value) => setSlotDate(value)}
               helperText="DD.MM.YYYY"
             />
-            <Stack direction="row" flexWrap="wrap" gap={1}>
-              {(availableQuery.data ?? []).map((slot) => (
-                <Chip
-                  key={slot.startsAt}
-                  label={skopjeTime(slot.startsAt)}
-                  onClick={() => {
-                    setValue('startsAt', skopjeDateTimeInput(slot.startsAt));
-                    setValue('endsAt', skopjeDateTimeInput(slot.endsAt));
-                  }}
-                />
-              ))}
-            </Stack>
+            {availableQuery.isError ? (
+              <ApiErrorAlert message={apiErrorMessage(availableQuery.error, t('loadFailed'))} />
+            ) : (
+              <Stack direction="row" flexWrap="wrap" gap={1}>
+                {(availableQuery.data ?? []).map((slot) => (
+                  <Chip
+                    key={slot.startsAt}
+                    label={skopjeTime(slot.startsAt)}
+                    onClick={() => {
+                      setValue('startsAt', skopjeDateTimeInput(slot.startsAt));
+                      setValue('endsAt', skopjeDateTimeInput(slot.endsAt));
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
             <Controller
               control={control}
               name="customerId"

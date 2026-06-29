@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { appointmentsApi } from '../api/modules';
-import { EmptyState, LoadingState } from '../components/LoadingState';
+import { apiErrorMessage } from '../components/ApiErrorAlert';
+import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import { skopjeDisplayDate, skopjeTime } from '../utils/dateTime';
 
@@ -21,9 +22,11 @@ export function CancelReservationPage() {
 
   if (!token) return <EmptyState />;
   if (infoQuery.isLoading) return <LoadingState />;
+  if (infoQuery.isError) return <ErrorState error={infoQuery.error} />;
   if (!infoQuery.data) return <EmptyState />;
 
   const info = infoQuery.data;
+  const cancellationMessage = info.cancellable ? t('appointmentCanBeCancelled') : t('appointmentCancelUnavailable');
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', p: { xs: 2, md: 4 } }}>
@@ -36,16 +39,20 @@ export function CancelReservationPage() {
             <ReservationField label={t('serviceType')} value={info.serviceType} />
             <ReservationField label={t('date')} value={skopjeDisplayDate(info.scheduledAt)} />
             <ReservationField label={t('time')} value={`${skopjeTime(info.scheduledAt)} - ${skopjeTime(info.endsAt)}`} />
-            <Typography color={info.cancellable ? 'text.secondary' : 'error'}>{info.message}</Typography>
+            <Typography color={info.cancellable ? 'text.secondary' : 'error'}>{cancellationMessage}</Typography>
             <Button
               variant="contained"
               color="error"
               disabled={!info.cancellable || cancelMutation.isPending}
               onClick={async () => {
-                await cancelMutation.mutateAsync();
-                showToast(t('appointmentCancelled'));
-                await queryClient.invalidateQueries({ queryKey: ['appointments'] });
-                await infoQuery.refetch();
+                try {
+                  await cancelMutation.mutateAsync();
+                  showToast(t('appointmentCancelled'));
+                  await queryClient.invalidateQueries({ queryKey: ['appointments'] });
+                  await infoQuery.refetch();
+                } catch (error) {
+                  showToast(apiErrorMessage(error, t('cancelFailed')), 'error');
+                }
               }}
             >
               {t('cancelAppointment')}

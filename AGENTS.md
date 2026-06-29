@@ -147,8 +147,6 @@ features/
 - Use pagination for all list endpoints.
 - Use UUID identifiers.
 - Use soft delete where applicable.
-- All API endpoints must be versioned:
-  /api/v1/
 
 ---
 
@@ -260,7 +258,7 @@ Example error response:
   "status": 404,
   "error": "NOT_FOUND",
   "message": "Customer not found",
-  "path": "/api/v1/customers/..."
+  "path": "/api/customers/..."
 }
 ```
 

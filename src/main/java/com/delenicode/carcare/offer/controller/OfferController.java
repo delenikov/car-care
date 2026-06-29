@@ -3,7 +3,6 @@ package com.delenicode.carcare.offer.controller;
 
 import com.delenicode.carcare.offer.dto.request.OfferRequest;
 import com.delenicode.carcare.offer.dto.response.OfferResponse;
-import com.delenicode.carcare.offer.model.Offer;
 import com.delenicode.carcare.offer.service.OfferService;
 import com.delenicode.carcare.common.ApiResponse;
 import com.delenicode.carcare.common.PageResponse;

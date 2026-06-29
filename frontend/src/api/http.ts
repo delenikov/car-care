@@ -14,9 +14,118 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface ApiErrorResponse {
+  timestamp?: string;
+  status: number;
+  error: string;
+  message: string;
+  path?: string;
+  fieldErrors?: Record<string, string>;
+}
+
+export class ApiClientError extends Error {
+  readonly status?: number;
+  readonly code?: string;
+  readonly path?: string;
+  readonly fieldErrors: Record<string, string>;
+  readonly originalError: unknown;
+
+  constructor(message: string, options: { status?: number; code?: string; path?: string; fieldErrors?: Record<string, string>; originalError?: unknown } = {}) {
+    super(message);
+    this.name = 'ApiClientError';
+    this.status = options.status;
+    this.code = options.code;
+    this.path = options.path;
+    this.fieldErrors = options.fieldErrors ?? {};
+    this.originalError = options.originalError;
+  }
+}
+
 const isApiResponse = <T>(value: T | ApiResponse<T>): value is ApiResponse<T> => {
   return Boolean(value && typeof value === 'object' && 'success' in value && 'message' in value && 'data' in value);
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object');
+
+const stringRecord = (value: unknown): Record<string, string> => {
+  if (!isRecord(value)) {
+    return {};
+  }
+  return Object.entries(value).reduce<Record<string, string>>((result, [key, item]) => {
+    if (typeof item === 'string') {
+      result[key] = item;
+    }
+    return result;
+  }, {});
+};
+
+const isApiErrorResponse = (value: unknown): value is ApiErrorResponse => {
+  return isRecord(value)
+    && typeof value.status === 'number'
+    && typeof value.error === 'string'
+    && typeof value.message === 'string';
+};
+
+export const normalizeApiError = (error: unknown, fallback = 'Барањето не успеа.'): ApiClientError => {
+  if (error instanceof ApiClientError) {
+    return error;
+  }
+
+  if (isRecord(error) && isRecord(error.response)) {
+    const response = error.response;
+    const data = response.data;
+    if (isApiErrorResponse(data)) {
+      return new ApiClientError(data.message || fallback, {
+        status: data.status,
+        code: data.error,
+        path: data.path,
+        fieldErrors: stringRecord(data.fieldErrors),
+        originalError: error
+      });
+    }
+    if (isRecord(data) && typeof data.message === 'string') {
+      return new ApiClientError(data.message || fallback, {
+        status: typeof response.status === 'number' ? response.status : undefined,
+        fieldErrors: stringRecord(data.fieldErrors),
+        originalError: error
+      });
+    }
+  }
+
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    if (isApiErrorResponse(data)) {
+      return new ApiClientError(data.message || fallback, {
+        status: data.status,
+        code: data.error,
+        path: data.path,
+        fieldErrors: stringRecord(data.fieldErrors),
+        originalError: error
+      });
+    }
+    if (isRecord(data) && typeof data.message === 'string') {
+      return new ApiClientError(data.message || fallback, {
+        status: error.response?.status,
+        fieldErrors: stringRecord(data.fieldErrors),
+        originalError: error
+      });
+    }
+    if (!error.response) {
+      return new ApiClientError(error.message || fallback, { originalError: error });
+    }
+    return new ApiClientError(fallback, { status: error.response.status, originalError: error });
+  }
+
+  if (error instanceof Error) {
+    return new ApiClientError(error.message || fallback, { originalError: error });
+  }
+
+  return new ApiClientError(fallback, { originalError: error });
+};
+
+export const apiErrorMessage = (error: unknown, fallback = 'Барањето не успеа.') => normalizeApiError(error, fallback).message;
+
+export const apiFieldErrors = (error: unknown) => normalizeApiError(error).fieldErrors;
 
 const authEndpointsWithoutAccessToken = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'];
 const accessTokenRefreshSkewSeconds = 30;
@@ -117,7 +226,7 @@ http.interceptors.response.use(
       && !authUrl.includes('/api/auth/login')
       && !authUrl.includes('/api/auth/refresh');
     if (!shouldRefresh) {
-      return Promise.reject(error);
+      return Promise.reject(normalizeApiError(error));
     }
 
     original._retry = true;
@@ -128,7 +237,7 @@ http.interceptors.response.use(
     } catch (refreshError) {
       tokenStorage.clear();
       refreshTokenStorage.clear();
-      return Promise.reject(refreshError);
+      return Promise.reject(normalizeApiError(refreshError));
     }
   }
 );

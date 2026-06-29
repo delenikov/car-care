@@ -72,11 +72,11 @@ class CarcarePostgresIntegrationTest {
   @Test
   void authLifecycleAndAdminRbacWorkAgainstPostgres() throws Exception {
     JsonNode missingEmail = post("/api/auth/login", null, Map.of("email", "missing@carcare.local", "password", "password123"), 401);
-    assertThat(missingEmail.get("message").asText()).isEqualTo("User with that email does not exist");
+    assertThat(missingEmail.get("message").asText()).isEqualTo("Не постои корисник со таа е-пошта");
     assertError(missingEmail, 401, "UNAUTHORIZED", "/api/auth/login");
 
     JsonNode wrongPassword = post("/api/auth/login", null, Map.of("email", "admin@carcare.local", "password", "wrong-password"), 401);
-    assertThat(wrongPassword.get("message").asText()).isEqualTo("Password is wrong");
+    assertThat(wrongPassword.get("message").asText()).isEqualTo("Лозинката е погрешна");
     assertError(wrongPassword, 401, "UNAUTHORIZED", "/api/auth/login");
 
     TokenPair admin = login("admin@carcare.local", "admin123");
@@ -196,6 +196,7 @@ class CarcarePostgresIntegrationTest {
     String cancellationToken = cancellationUrl.substring(cancellationUrl.lastIndexOf('/') + 1);
     JsonNode cancellationInfo = get("/api/appointments/cancel-info/" + cancellationToken, null, 200).get("data");
     assertThat(cancellationInfo.get("cancellable").asBoolean()).isTrue();
+    assertThat(cancellationInfo.get("message").asText()).isEqualTo("Терминот може да се откаже.");
     JsonNode cancelledAppointment = post("/api/appointments/cancel", null, Map.of("token", cancellationToken), 200).get("data");
     assertThat(cancelledAppointment.get("status").asText()).isEqualTo("CANCELLED");
     post("/api/appointments/cancel", null, Map.of("token", cancellationToken), 400);

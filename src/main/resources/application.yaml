@@ -33,6 +33,11 @@ spring:
     locations: classpath:db/migration
   thymeleaf:
     check-template-location: false
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 app:
   time-zone: Europe/Skopje
   mail:

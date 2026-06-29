@@ -1,20 +1,15 @@
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
-import { Box } from '@mui/material';
+import { Box, Stack, Typography } from '@mui/material';
+import { apiErrorMessage, apiFieldErrors, normalizeApiError } from '../api/http';
 
-export const apiErrorMessage = (error: unknown, fallback = 'Request failed') => {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const data = (error as { response?: { data?: { message?: string } } }).response?.data;
-    if (data?.message) {
-      return data.message;
-    }
-  }
-  return fallback;
-};
+export { apiErrorMessage, apiFieldErrors, normalizeApiError };
 
-export function ApiErrorAlert({ message }: { message: string }) {
+export function ApiErrorAlert({ message, fieldErrors = {} }: { message: string; fieldErrors?: Record<string, string> }) {
   if (!message) {
     return null;
   }
+
+  const fieldErrorValues = Object.values(fieldErrors).filter(Boolean);
 
   return (
     <Box
@@ -27,13 +22,24 @@ export function ApiErrorAlert({ message }: { message: string }) {
         color: '#7f1d1d',
         border: '1px solid #fecaca',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 1,
         fontWeight: 700
       }}
     >
-      <ErrorOutlineRoundedIcon fontSize="small" />
-      <Box component="span">{message}</Box>
+      <ErrorOutlineRoundedIcon fontSize="small" sx={{ mt: 0.25 }} />
+      <Stack spacing={0.5}>
+        <Box component="span">{message}</Box>
+        {fieldErrorValues.length ? (
+          <Box component="ul" sx={{ m: 0, pl: 2.5, fontWeight: 500 }}>
+            {fieldErrorValues.map((fieldError) => (
+              <Typography key={fieldError} component="li" variant="body2">
+                {fieldError}
+              </Typography>
+            ))}
+          </Box>
+        ) : null}
+      </Stack>
     </Box>
   );
 }

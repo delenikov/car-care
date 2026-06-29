@@ -63,7 +63,7 @@ class AuthServiceTest {
 
     assertThatThrownBy(() -> authService.login(new LoginRequest("missing@carcare.local", "password123")))
         .isInstanceOf(BadCredentialsException.class)
-        .hasMessage("User with that email does not exist");
+        .hasMessage("Не постои корисник со таа е-пошта");
 
     verify(auditService).record("missing@carcare.local", "LOGIN_FAILED", "AppUser", null, "Email not found");
   }
@@ -76,7 +76,7 @@ class AuthServiceTest {
 
     assertThatThrownBy(() -> authService.login(new LoginRequest(user.getEmail(), "wrong-password")))
         .isInstanceOf(BadCredentialsException.class)
-        .hasMessage("Password is wrong");
+        .hasMessage("Лозинката е погрешна");
 
     assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
     verify(users).save(user);
@@ -145,7 +145,7 @@ class AuthServiceTest {
 
     assertThatThrownBy(() -> authService.changePassword(user.getEmail(), new ChangePasswordRequest("wrong-password", "new-password")))
         .isInstanceOf(BadCredentialsException.class)
-        .hasMessage("Invalid current password");
+        .hasMessage("Тековната лозинка е погрешна");
   }
 
   private AppUser user(String email) {

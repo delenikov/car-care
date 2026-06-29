@@ -36,6 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class AppointmentService {
+  private static final String CANCELLATION_ALLOWED_MESSAGE = "Терминот може да се откаже.";
+  private static final String CANCELLATION_UNAVAILABLE_MESSAGE = "Линкот за откажување е искористен или истечен.";
+
   private final AppointmentRepository appointments;
   private final CustomerRepository customers;
   private final VehicleRepository vehicles;
@@ -158,7 +161,6 @@ public class AppointmentService {
     boolean cancellable = appointment.getCancellationUsedAt() == null
         && !cancellationTokens.isExpired(appointment, OffsetDateTime.now())
         && appointment.getStatus() != AppointmentStatus.CANCELLED;
-    String message = cancellable ? "Ð¢ÐµÑ€Ð¼Ð¸Ð½Ð¾Ñ‚ Ð¼Ð¾Ð¶Ðµ Ð´Ð° ÑÐµ Ð¾Ñ‚ÐºÐ°Ð¶Ðµ." : "Ð›Ð¸Ð½ÐºÐ¾Ñ‚ Ð·Ð° Ð¾Ñ‚ÐºÐ°Ð¶ÑƒÐ²Ð°ÑšÐµ Ðµ Ð¸ÑÐºÐ¾Ñ€Ð¸ÑÑ‚ÐµÐ½ Ð¸Ð»Ð¸ Ð¸ÑÑ‚ÐµÑ‡ÐµÐ½.";
     Vehicle vehicle = appointment.getVehicle();
     return new AppointmentCancellationInfoResponse(
         appointment.getCustomer().getFullName(),
@@ -169,7 +171,7 @@ public class AppointmentService {
         appointment.getServiceType(),
         appointment.getStatus(),
         cancellable,
-        message);
+        cancellationMessage(cancellable));
   }
 
   public ReminderSummaryResponse sendReminders(LocalDate date) {
@@ -232,5 +234,9 @@ public class AppointmentService {
   private void publishCreated(Appointment appointment) {
     log.info("Appointment created event published. Appointment ID: {}", appointment.getId());
     events.publishEvent(new AppointmentCreatedEvent(appointment.getId()));
+  }
+
+  private String cancellationMessage(boolean cancellable) {
+    return cancellable ? CANCELLATION_ALLOWED_MESSAGE : CANCELLATION_UNAVAILABLE_MESSAGE;
   }
 }

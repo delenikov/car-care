@@ -13,7 +13,7 @@ Note: no `sds.md` file exists in this repository. This check treats `docs/srs.md
 
 FR-1 through FR-44 from `docs/srs.md` are implemented on the backend and frontend and are covered by unit tests, PostgreSQL Testcontainers integration tests, and Playwright e2e tests.
 
-The remaining gaps are non-functional/architecture concerns, including real SMTP transport configuration, binary object storage, `/api/v1` endpoint versioning, UUID identifiers, pagination, and audit-field expansion.
+The remaining gaps are non-functional/architecture concerns, including real SMTP transport configuration, binary object storage, endpoint versioning, UUID identifiers, pagination, and audit-field expansion.
 
 ## Implemented Or Mostly Implemented
 
@@ -62,7 +62,6 @@ The remaining gaps are non-functional/architecture concerns, including real SMTP
 
 ### Non-Functional And Architecture
 
-- `/api/v1/` endpoint versioning is missing.
 - UUID primary keys are missing.
 - `created_by` and `updated_by` audit fields are missing.
 - Soft delete is only partially implemented.

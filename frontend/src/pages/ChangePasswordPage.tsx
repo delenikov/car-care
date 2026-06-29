@@ -9,6 +9,7 @@ import { authApi } from '../api/modules';
 import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { FormTextField } from '../components/FormTextField';
 import { useToast } from '../components/ToastProvider';
+import { applyApiFieldErrors } from '../utils/apiFormErrors';
 
 const schema = z.object({
   currentPassword: z.string().min(1),
@@ -21,7 +22,7 @@ export function ChangePasswordPage() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [errorMessage, setErrorMessage] = useState('');
-  const { control, handleSubmit, reset, formState } = useForm<ChangePasswordForm>({
+  const { control, handleSubmit, reset, setError, formState } = useForm<ChangePasswordForm>({
     resolver: zodResolver(schema),
     defaultValues: { currentPassword: '', newPassword: '' }
   });
@@ -34,7 +35,8 @@ export function ChangePasswordPage() {
       reset();
       showToast(t('updated'));
     } catch (error) {
-      setErrorMessage(apiErrorMessage(error, 'Password change failed'));
+      applyApiFieldErrors(error, setError);
+      setErrorMessage(apiErrorMessage(error, t('passwordChangeFailed')));
     }
   });
 

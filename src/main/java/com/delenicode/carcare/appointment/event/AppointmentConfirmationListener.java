@@ -7,9 +7,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class AppointmentConfirmationListener {
   private final AppointmentDeliveryService deliveryService;
 

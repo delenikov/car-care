@@ -3,15 +3,18 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Autocomplete, Box, Button, Chip, CircularProgress, Divider, IconButton, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { customersApi, offersApi } from '../api/modules';
+import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { FormTextField } from '../components/FormTextField';
-import { EmptyState, LoadingState } from '../components/LoadingState';
+import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { Customer, Offer, OfferPart, Vehicle } from '../types';
+import { applyApiFieldErrors } from '../utils/apiFormErrors';
 import { downloadBlob } from '../utils/download';
 
 const partSchema = z.object({
@@ -36,12 +39,13 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const [errorMessage, setErrorMessage] = useState('');
   const listQuery = useQuery({ queryKey: ['offers'], queryFn: offersApi.list, enabled: mode === 'list' });
   const detailQuery = useQuery({ queryKey: ['offers', id], queryFn: () => offersApi.get(id!), enabled: mode === 'detail' && Boolean(id) });
   const createMutation = useMutation({ mutationFn: offersApi.create });
   const sendMutation = useMutation({ mutationFn: offersApi.send });
   const exportMutation = useMutation({ mutationFn: offersApi.exportPdf });
-  const { clearErrors, control, handleSubmit, setValue, formState } = useForm<OfferForm>({
+  const { clearErrors, control, handleSubmit, setError, setValue, formState } = useForm<OfferForm>({
     resolver: zodResolver(schema) as never,
     defaultValues: { customerId: '', vehicleId: '', title: '', parts: [], laborCost: 0, status: 'DRAFT' }
   });
@@ -69,24 +73,33 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
 
   if (mode === 'create') {
     const onSubmit = handleSubmit(async (values) => {
-      const parts = values.parts.map((part) => ({ name: part.name.trim(), price: Number(part.price) }));
-      const computedPartsCost = sumParts(parts);
-      const created = await createMutation.mutateAsync({
-        customerId: values.customerId,
-        vehicleId: values.vehicleId || undefined,
-        title: values.title,
-        parts,
-        partsCost: computedPartsCost,
-        laborCost: Number(values.laborCost) || 0,
-        subtotal: computedPartsCost + (Number(values.laborCost) || 0),
-        discountPercent: 0,
-        discountAmount: 0,
-        total: computedPartsCost + (Number(values.laborCost) || 0),
-        status: 'DRAFT'
-      });
-      await queryClient.invalidateQueries({ queryKey: ['offers'] });
-      showToast(t('offerSent'));
-      navigate(`/offers/${created.id}`);
+      setErrorMessage('');
+      try {
+        const parts = values.parts.map((part) => ({ name: part.name.trim(), price: Number(part.price) }));
+        const computedPartsCost = sumParts(parts);
+        const created = await createMutation.mutateAsync({
+          customerId: values.customerId,
+          vehicleId: values.vehicleId || undefined,
+          title: values.title,
+          parts,
+          partsCost: computedPartsCost,
+          laborCost: Number(values.laborCost) || 0,
+          subtotal: computedPartsCost + (Number(values.laborCost) || 0),
+          discountPercent: 0,
+          discountAmount: 0,
+          total: computedPartsCost + (Number(values.laborCost) || 0),
+          status: 'DRAFT'
+        });
+        await queryClient.invalidateQueries({ queryKey: ['offers'] });
+        showToast(t('offerSent'));
+        navigate(`/offers/${created.id}`);
+      } catch (error) {
+        applyApiFieldErrors(error, setError, {
+          partsCost: 'parts',
+          amount: 'laborCost'
+        });
+        setErrorMessage(apiErrorMessage(error, t('saveFailed')));
+      }
     });
 
     return (
@@ -95,6 +108,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         <Box component="form" onSubmit={onSubmit} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' }, gap: 3, alignItems: 'start' }}>
           <Paper sx={{ p: { xs: 3, md: 4 } }}>
             <Stack spacing={3}>
+              <ApiErrorAlert message={errorMessage} />
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
                 <Controller
                   control={control}
@@ -231,6 +245,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
 
   if (mode === 'detail') {
     if (detailQuery.isLoading) return <LoadingState />;
+    if (detailQuery.isError) return <ErrorState error={detailQuery.error} />;
     const offer = detailQuery.data;
     if (!offer) return <EmptyState />;
     return (
@@ -247,9 +262,13 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
               variant="outlined"
               disabled={exportMutation.isPending}
               onClick={async () => {
-                const response = await exportMutation.mutateAsync(offer.id);
-                downloadBlob(response.data, `offer-${offer.id}.pdf`);
-                showToast('PDF');
+                try {
+                  const response = await exportMutation.mutateAsync(offer.id);
+                  downloadBlob(response.data, `offer-${offer.id}.pdf`);
+                  showToast('PDF');
+                } catch (error) {
+                  showToast(apiErrorMessage(error, t('downloadFailed')), 'error');
+                }
               }}
             >
               PDF
@@ -258,9 +277,13 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
               variant="contained"
               disabled={(offer.status !== 'PENDING_DELIVERY' && offer.status !== 'DELIVERY_FAILED') || sendMutation.isPending}
               onClick={async () => {
-                await sendMutation.mutateAsync(offer.id);
-                await queryClient.invalidateQueries({ queryKey: ['offers', id] });
-                showToast(t('offerSent'));
+                try {
+                  await sendMutation.mutateAsync(offer.id);
+                  await queryClient.invalidateQueries({ queryKey: ['offers', id] });
+                  showToast(t('offerSent'));
+                } catch (error) {
+                  showToast(apiErrorMessage(error, t('sendFailed')), 'error');
+                }
               }}
             >
               {t('send')}
@@ -327,6 +350,7 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
   }
 
   if (listQuery.isLoading) return <LoadingState />;
+  if (listQuery.isError) return <ErrorState error={listQuery.error} />;
   const offers = listQuery.data ?? [];
 
   return (

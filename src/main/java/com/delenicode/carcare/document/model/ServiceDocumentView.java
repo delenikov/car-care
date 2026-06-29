@@ -1,7 +1,5 @@
 package com.delenicode.carcare.document.model;
 
-
-import com.delenicode.carcare.vehicle.model.Vehicle;
 public record ServiceDocumentView(
     String documentNumber,
     String customerName,

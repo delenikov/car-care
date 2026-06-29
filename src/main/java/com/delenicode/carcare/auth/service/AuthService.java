@@ -47,7 +47,7 @@ public class AuthService {
     AppUser user = users.findByEmail(request.email()).orElseThrow(() -> {
       auditService.record(request.email(), "LOGIN_FAILED", "AppUser", null, "Email not found");
       log.warn("Login failed. Reason: email not found. Email: {}", LogSanitizer.email(request.email()));
-      return new BadCredentialsException("User with that email does not exist");
+      return new BadCredentialsException("Не постои корисник со таа е-пошта");
     });
     try {
       authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
@@ -56,7 +56,7 @@ public class AuthService {
       users.save(user);
       auditService.record(request.email(), "LOGIN_FAILED", "AppUser", user.getId(), "Invalid password");
       log.warn("Login failed. Reason: bad password. User ID: {}. Attempts: {}. Email: {}", user.getId(), user.getFailedLoginAttempts(), LogSanitizer.email(request.email()));
-      throw new BadCredentialsException("Password is wrong");
+      throw new BadCredentialsException("Лозинката е погрешна");
     }
     user.setFailedLoginAttempts(0);
     user.setLastLoginAt(Instant.now());
@@ -70,12 +70,12 @@ public class AuthService {
   public AuthResponse refresh(RefreshRequest request) {
     RefreshToken stored = refreshTokens
         .findByTokenAndRevokedFalse(request.refreshToken())
-        .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
+        .orElseThrow(() -> new BadCredentialsException("Невалиден refresh token"));
 
     if (stored.getExpiresAt().isBefore(Instant.now())) {
       stored.setRevoked(true);
       log.warn("Refresh token rejected. Reason: expired. User ID: {}", stored.getUser().getId());
-      throw new BadCredentialsException("Refresh token expired");
+      throw new BadCredentialsException("Refresh token е истечен");
     }
 
     stored.setRevoked(true);
@@ -94,11 +94,11 @@ public class AuthService {
 
   @Transactional
   public void changePassword(String email, ChangePasswordRequest request) {
-    AppUser user = users.findByEmail(email).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+    AppUser user = users.findByEmail(email).orElseThrow(() -> new BadCredentialsException("Невалидни креденцијали"));
     if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
       auditService.record(email, "PASSWORD_CHANGE_FAILED", "AppUser", user.getId(), "Current password mismatch");
       log.warn("Password change failed. Reason: current password mismatch. User ID: {}", user.getId());
-      throw new BadCredentialsException("Invalid current password");
+      throw new BadCredentialsException("Тековната лозинка е погрешна");
     }
     user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
     users.save(user);

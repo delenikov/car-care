@@ -1,8 +1,6 @@
 package com.delenicode.carcare.servicerecord.event;
 
-
 import com.delenicode.carcare.document.service.ServiceDocumentService;
-import com.delenicode.carcare.servicerecord.model.ServiceRecord;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

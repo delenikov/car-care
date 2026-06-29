@@ -11,11 +11,13 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { adminUsersApi } from '../api/modules';
+import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormTextField } from '../components/FormTextField';
-import { EmptyState, LoadingState } from '../components/LoadingState';
+import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { Role, User } from '../types';
+import { applyApiFieldErrors } from '../utils/apiFormErrors';
 
 const employeeSchema = z.object({
   fullName: z.string().min(1),
@@ -49,32 +51,44 @@ function EmployeePanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const { control, handleSubmit, reset, formState } = useForm<EmployeeForm>({
+  const { control, handleSubmit, reset, setError, formState } = useForm<EmployeeForm>({
     resolver: zodResolver(employeeSchema) as never,
     defaultValues: emptyEmployeeForm()
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    if (editingId) {
-      await updateMutation.mutateAsync({ id: editingId, values });
-    } else {
-      await createMutation.mutateAsync(toEmployeePayload(values));
+    setErrorMessage('');
+    try {
+      if (editingId) {
+        await updateMutation.mutateAsync({ id: editingId, values });
+      } else {
+        await createMutation.mutateAsync(toEmployeePayload(values));
+      }
+      await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setEditingId(null);
+      setFormOpen(false);
+      reset(emptyEmployeeForm());
+      showToast(t('saved'));
+    } catch (error) {
+      const fieldErrors = applyApiFieldErrors(error, setError);
+      setErrorMessage(apiErrorMessage(error, t('saveFailed')));
+      if (!Object.keys(fieldErrors).length) {
+        showToast(apiErrorMessage(error, t('saveFailed')), 'error');
+      }
     }
-    await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-    setEditingId(null);
-    setFormOpen(false);
-    reset(emptyEmployeeForm());
-    showToast(t('saved'));
   });
 
   const startCreate = () => {
+    setErrorMessage('');
     setEditingId(null);
     reset(emptyEmployeeForm());
     setFormOpen(true);
   };
 
   const startEdit = (user: User) => {
+    setErrorMessage('');
     setEditingId(user.id);
     reset({
       fullName: user.fullName,
@@ -87,13 +101,18 @@ function EmployeePanel() {
   };
 
   const deleteUser = async (user: User) => {
-    await deleteMutation.mutateAsync(user.id);
-    await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-    setDeleteTarget(null);
-    showToast(t('updated'));
+    try {
+      await deleteMutation.mutateAsync(user.id);
+      await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setDeleteTarget(null);
+      showToast(t('updated'));
+    } catch (error) {
+      showToast(apiErrorMessage(error, t('deleteFailed')), 'error');
+    }
   };
 
   if (usersQuery.isLoading) return <LoadingState />;
+  if (usersQuery.isError) return <ErrorState error={usersQuery.error} />;
 
   return (
     <Stack spacing={3}>
@@ -140,6 +159,7 @@ function EmployeePanel() {
           <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 }, alignSelf: 'start' }}>
             <Stack spacing={2.5}>
               <Typography variant="h4">{editingId ? t('editEmployee') : t('newEmployee')}</Typography>
+              <ApiErrorAlert message={errorMessage} />
               <FormTextField control={control} name="fullName" label={t('name')} />
               <FormTextField control={control} name="email" label={t('email')} />
               <FormTextField control={control} name="password" label={t('password')} type="password" helperText={editingId ? t('newPasswordHint') : undefined} />

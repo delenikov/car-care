@@ -3,7 +3,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { documentsApi } from '../api/modules';
-import { EmptyState, LoadingState } from '../components/LoadingState';
+import { apiErrorMessage } from '../components/ApiErrorAlert';
+import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { DocumentRecord } from '../types';
 import { downloadBlob } from '../utils/download';
@@ -11,7 +12,7 @@ import { downloadBlob } from '../utils/download';
 export function DocumentsPage() {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { data = [], isLoading } = useQuery({ queryKey: ['documents'], queryFn: documentsApi.list });
+  const { data = [], error, isError, isLoading } = useQuery({ queryKey: ['documents'], queryFn: documentsApi.list });
   const [selected, setSelected] = useState<DocumentRecord | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const sendMutation = useMutation({ mutationFn: documentsApi.send });
@@ -27,6 +28,7 @@ export function DocumentsPage() {
   }, [previewUrl]);
 
   if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState error={error} />;
 
   return (
     <Stack spacing={3}>
@@ -54,24 +56,32 @@ export function DocumentsPage() {
                         <Button
                           disabled={previewMutation.isPending}
                           onClick={async () => {
-                            const response = await previewMutation.mutateAsync(document.id);
-                            const nextUrl = URL.createObjectURL(response.data);
-                            setPreviewUrl((currentUrl) => {
-                              if (currentUrl) {
-                                URL.revokeObjectURL(currentUrl);
-                              }
-                              return nextUrl;
-                            });
-                            setSelected(document);
+                            try {
+                              const response = await previewMutation.mutateAsync(document.id);
+                              const nextUrl = URL.createObjectURL(response.data);
+                              setPreviewUrl((currentUrl) => {
+                                if (currentUrl) {
+                                  URL.revokeObjectURL(currentUrl);
+                                }
+                                return nextUrl;
+                              });
+                              setSelected(document);
+                            } catch (error) {
+                              showToast(apiErrorMessage(error, t('previewFailed')), 'error');
+                            }
                           }}
                         >
                           {t('view')}
                         </Button>
                         <Button
                           onClick={async () => {
-                            const response = await exportMutation.mutateAsync(document.id);
-                            downloadBlob(response.data, document.title || `document-${document.id}.pdf`);
-                            showToast('PDF');
+                            try {
+                              const response = await exportMutation.mutateAsync(document.id);
+                              downloadBlob(response.data, document.title || `document-${document.id}.pdf`);
+                              showToast('PDF');
+                            } catch (error) {
+                              showToast(apiErrorMessage(error, t('downloadFailed')), 'error');
+                            }
                           }}
                         >
                           PDF
@@ -79,8 +89,12 @@ export function DocumentsPage() {
                         <Button
                           variant="contained"
                           onClick={async () => {
-                            await sendMutation.mutateAsync(document.id);
-                            showToast(t('send'));
+                            try {
+                              await sendMutation.mutateAsync(document.id);
+                              showToast(t('send'));
+                            } catch (error) {
+                              showToast(apiErrorMessage(error, t('sendFailed')), 'error');
+                            }
                           }}
                         >
                           {t('send')}

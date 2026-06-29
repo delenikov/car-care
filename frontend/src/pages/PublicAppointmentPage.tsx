@@ -6,9 +6,11 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { appointmentsApi } from '../api/modules';
+import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { DateInput } from '../components/DateTimeInputs';
 import { FormTextField } from '../components/FormTextField';
 import { useToast } from '../components/ToastProvider';
+import { applyApiFieldErrors } from '../utils/apiFormErrors';
 import { skopjeDate, skopjeDateTimeInput, skopjeOffsetDateTime, skopjeTime } from '../utils/dateTime';
 
 const schema = z.object({
@@ -35,9 +37,10 @@ export function PublicAppointmentPage() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [slotDate, setSlotDate] = useState(skopjeDate(new Date()));
+  const [errorMessage, setErrorMessage] = useState('');
   const availableQuery = useQuery({ queryKey: ['appointments', 'available', slotDate, 'public'], queryFn: () => appointmentsApi.available(slotDate) });
   const createMutation = useMutation({ mutationFn: appointmentsApi.publicCreate });
-  const { control, handleSubmit, reset, setValue, formState } = useForm<PublicAppointmentForm>({
+  const { control, handleSubmit, reset, setError, setValue, formState } = useForm<PublicAppointmentForm>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
       fullName: '',
@@ -59,14 +62,20 @@ export function PublicAppointmentPage() {
   const selectedStart = useWatch({ control, name: 'startsAt' });
 
   const onSubmit = handleSubmit(async (values) => {
-    await createMutation.mutateAsync({
-      ...values,
-      startsAt: skopjeOffsetDateTime(values.startsAt),
-      endsAt: skopjeOffsetDateTime(values.endsAt)
-    });
-    await queryClient.invalidateQueries({ queryKey: ['appointments', 'available'] });
-    reset({ ...values, startsAt: '', endsAt: '' });
-    showToast(t('saved'));
+    setErrorMessage('');
+    try {
+      await createMutation.mutateAsync({
+        ...values,
+        startsAt: skopjeOffsetDateTime(values.startsAt),
+        endsAt: skopjeOffsetDateTime(values.endsAt)
+      });
+      await queryClient.invalidateQueries({ queryKey: ['appointments', 'available'] });
+      reset({ ...values, startsAt: '', endsAt: '' });
+      showToast(t('saved'));
+    } catch (error) {
+      applyApiFieldErrors(error, setError);
+      setErrorMessage(apiErrorMessage(error, t('appointmentSaveFailed')));
+    }
   });
 
   return (
@@ -78,6 +87,7 @@ export function PublicAppointmentPage() {
         </Box>
         <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
           <Stack spacing={3}>
+            <ApiErrorAlert message={errorMessage} />
             <DateInput
               name="slotDate"
               label={t('availableDate')}
@@ -87,19 +97,23 @@ export function PublicAppointmentPage() {
               onChange={(value) => setSlotDate(value)}
               helperText="DD.MM.YYYY"
             />
-            <Stack direction="row" flexWrap="wrap" gap={1}>
-              {(availableQuery.data ?? []).map((slot) => (
-                <Chip
-                  key={slot.startsAt}
-                  color={selectedStart === skopjeDateTimeInput(slot.startsAt) ? 'primary' : 'default'}
-                  label={skopjeTime(slot.startsAt)}
-                  onClick={() => {
-                    setValue('startsAt', skopjeDateTimeInput(slot.startsAt), { shouldDirty: true, shouldValidate: true });
-                    setValue('endsAt', skopjeDateTimeInput(slot.endsAt), { shouldDirty: true, shouldValidate: true });
-                  }}
-                />
-              ))}
-            </Stack>
+            {availableQuery.isError ? (
+              <ApiErrorAlert message={apiErrorMessage(availableQuery.error, t('loadFailed'))} />
+            ) : (
+              <Stack direction="row" flexWrap="wrap" gap={1}>
+                {(availableQuery.data ?? []).map((slot) => (
+                  <Chip
+                    key={slot.startsAt}
+                    color={selectedStart === skopjeDateTimeInput(slot.startsAt) ? 'primary' : 'default'}
+                    label={skopjeTime(slot.startsAt)}
+                    onClick={() => {
+                      setValue('startsAt', skopjeDateTimeInput(slot.startsAt), { shouldDirty: true, shouldValidate: true });
+                      setValue('endsAt', skopjeDateTimeInput(slot.endsAt), { shouldDirty: true, shouldValidate: true });
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
               <FormTextField control={control} name="fullName" label={t('fullName')} />
               <FormTextField control={control} name="email" label={t('email')} type="email" />

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { useAuth } from '../auth/AuthContext';
 import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { FormTextField } from '../components/FormTextField';
+import { applyApiFieldErrors } from '../utils/apiFormErrors';
 
 const schema = z.object({
   email: z.string().email(),
@@ -23,7 +24,7 @@ export function LoginPage() {
   const location = useLocation();
   const [errorMessage, setErrorMessage] = useState('');
   const from = useMemo(() => (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/', [location.state]);
-  const { control, handleSubmit, formState } = useForm<LoginForm>({
+  const { control, handleSubmit, setError, formState } = useForm<LoginForm>({
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' }
   });
@@ -38,7 +39,8 @@ export function LoginPage() {
       await auth.login(values);
       navigate(from, { replace: true });
     } catch (error) {
-      setErrorMessage(apiErrorMessage(error, 'Login failed'));
+      applyApiFieldErrors(error, setError);
+      setErrorMessage(apiErrorMessage(error, t('loginFailed')));
     }
   });
 
