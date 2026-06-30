@@ -29,7 +29,6 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
@@ -57,7 +56,7 @@ import type { Customer, ServiceRecord, Vehicle } from '../types';
 import { applyApiFieldErrors } from '../utils/apiFormErrors';
 
 type Kind = 'customers' | 'vehicles';
-type Mode = 'list' | 'create' | 'detail' | 'edit';
+type Mode = 'list' | 'detail' | 'edit';
 
 const customerSchema = z.object({
   name: z.string().min(1, 'Customer name is required'),
@@ -95,17 +94,18 @@ function CustomerPage({ mode }: { mode: Mode }) {
   const { showToast } = useToast();
   const [errorMessage, setErrorMessage] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [filters, setFilters] = useState({ firstName: '', lastName: '' });
   const [submittedFilters, setSubmittedFilters] = useState(filters);
   const listQuery = useQuery({
     queryKey: ['customers', submittedFilters],
     queryFn: () => customersApi.list(cleanFilters(submittedFilters)),
-    enabled: mode === 'list' || mode === 'create'
+    enabled: mode === 'list'
   });
   const detailQuery = useQuery({
     queryKey: ['customers', id],
     queryFn: () => customersApi.get(id!),
-    enabled: Boolean(id) && mode !== 'create' && mode !== 'list'
+    enabled: Boolean(id) && mode !== 'list'
   });
   const vehiclesQuery = useQuery({
     queryKey: ['customers', id, 'vehicles'],
@@ -131,11 +131,57 @@ function CustomerPage({ mode }: { mode: Mode }) {
     }
   }, [detailQuery.data, reset]);
 
+  const onSubmit = handleSubmit(async (values) => {
+    setErrorMessage('');
+    try {
+      const saved = id ? await updateMutation.mutateAsync(values) : await createMutation.mutateAsync(values);
+      await queryClient.invalidateQueries({ queryKey: ['customers'] });
+      showToast(t(id ? 'updated' : 'saved'));
+      setEditDialogOpen(false);
+      setCreateDialogOpen(false);
+      navigate(`/customers/${saved.id}`);
+    } catch (error) {
+      applyApiFieldErrors(error, setError, {
+        firstName: 'name',
+        lastName: 'name',
+        fullName: 'name',
+        address: 'notes'
+      });
+      setErrorMessage(apiErrorMessage(error, t('saveFailed')));
+    }
+  });
+
+  const openCreateDialog = () => {
+    setErrorMessage('');
+    reset({ name: '', phone: '', email: '', notes: '' });
+    setCreateDialogOpen(true);
+  };
+
+  const formTitle = `${t('edit')} ${detailQuery.data?.name ?? ''}`;
+  const customerForm = (
+    <>
+      <ApiErrorAlert message={errorMessage} />
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+          gap: 2
+        }}
+      >
+        <FormTextField control={control} name="name" label={t('fullName')} placeholder="Александар Стојановски" autoComplete="name" InputProps={{ startAdornment: fieldIcon(<PersonRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
+        <FormTextField control={control} name="phone" label={t('phone')} placeholder="+389 70 123 456" autoComplete="tel" InputProps={{ startAdornment: fieldIcon(<PhoneRoundedIcon />) }} />
+        <FormTextField control={control} name="email" label={t('email')} placeholder="korisnik@email.com" type="email" autoComplete="email" InputProps={{ startAdornment: fieldIcon(<EmailRoundedIcon />) }} />
+        <FormTextField control={control} name="notes" label={t('address')} placeholder="ул. Пример 1, Скопје" autoComplete="street-address" multiline minRows={3} InputProps={{ startAdornment: fieldIcon(<HomeRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
+      </Box>
+    </>
+  );
+
   if (mode === 'list') {
     if (listQuery.isLoading) return <LoadingState />;
     if (listQuery.isError) return <ErrorState error={listQuery.error} />;
     return (
-      <ResourceFrame title={t('customers')} actionLabel={t('newCustomer')} actionTo="/customers/new" actionIcon={<AddRoundedIcon />}>
+      <>
+      <ResourceFrame title={t('customers')} actionLabel={t('newCustomer')} onAction={openCreateDialog} actionIcon={<AddRoundedIcon />}>
         <Paper sx={{ p: 2 }}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -167,103 +213,22 @@ function CustomerPage({ mode }: { mode: Mode }) {
         </Paper>
         <CustomerTable customers={listQuery.data ?? []} />
       </ResourceFrame>
+        {createDialogOpen ? (
+          <ResourceFormDialog
+            title={t('newCustomer')}
+            onClose={() => setCreateDialogOpen(false)}
+            onSubmit={onSubmit}
+            isSubmitting={formState.isSubmitting}
+          >
+            {customerForm}
+          </ResourceFormDialog>
+        ) : null}
+      </>
     );
   }
 
   if (mode === 'edit' && detailQuery.isLoading) return <LoadingState />;
   if (mode === 'edit' && detailQuery.isError) return <ErrorState error={detailQuery.error} />;
-
-  const onSubmit = handleSubmit(async (values) => {
-    setErrorMessage('');
-    try {
-      const saved = mode === 'create' ? await createMutation.mutateAsync(values) : await updateMutation.mutateAsync(values);
-      await queryClient.invalidateQueries({ queryKey: ['customers'] });
-      showToast(t(mode === 'create' ? 'saved' : 'updated'));
-      setEditDialogOpen(false);
-      navigate(`/customers/${saved.id}`);
-    } catch (error) {
-      applyApiFieldErrors(error, setError, {
-        firstName: 'name',
-        lastName: 'name',
-        fullName: 'name',
-        address: 'notes'
-      });
-      setErrorMessage(apiErrorMessage(error, t('saveFailed')));
-    }
-  });
-
-  const isCreate = mode === 'create';
-  const formTitle = isCreate ? t('newCustomer') : `${t('edit')} ${detailQuery.data?.name ?? ''}`;
-  const customerForm = (
-    <>
-      <ApiErrorAlert message={errorMessage} />
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-          gap: 2
-        }}
-      >
-        <FormTextField control={control} name="name" label={t('fullName')} placeholder="Александар Стојановски" autoComplete="name" InputProps={{ startAdornment: fieldIcon(<PersonRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
-        <FormTextField control={control} name="phone" label={t('phone')} placeholder="+389 70 123 456" autoComplete="tel" InputProps={{ startAdornment: fieldIcon(<PhoneRoundedIcon />) }} />
-        <FormTextField control={control} name="email" label={t('email')} placeholder="korisnik@email.com" type="email" autoComplete="email" InputProps={{ startAdornment: fieldIcon(<EmailRoundedIcon />) }} />
-        <FormTextField control={control} name="notes" label={t('address')} placeholder="ул. Пример 1, Скопје" autoComplete="street-address" multiline minRows={3} InputProps={{ startAdornment: fieldIcon(<HomeRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
-      </Box>
-    </>
-  );
-
-  if (isCreate) {
-    return (
-      <>
-        {listQuery.isLoading ? (
-          <LoadingState />
-        ) : listQuery.isError ? (
-          <ErrorState error={listQuery.error} />
-        ) : (
-          <ResourceFrame title={t('customers')} actionLabel={t('newCustomer')} actionTo="/customers/new" actionIcon={<AddRoundedIcon />}>
-            <Paper sx={{ p: 2 }}>
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                spacing={2}
-                component="form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setSubmittedFilters(filters);
-                }}
-              >
-                <TextField
-                  name="firstName"
-                  label={t('firstName')}
-                  value={filters.firstName}
-                  onChange={(event) => setFilters((current) => ({ ...current, firstName: event.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  name="lastName"
-                  label={t('lastName')}
-                  value={filters.lastName}
-                  onChange={(event) => setFilters((current) => ({ ...current, lastName: event.target.value }))}
-                  fullWidth
-                />
-                <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
-                  {t('search')}
-                </Button>
-              </Stack>
-            </Paper>
-            <CustomerTable customers={listQuery.data ?? []} />
-          </ResourceFrame>
-        )}
-        <ResourceFormDialog
-          title={formTitle}
-          closeTo="/customers"
-          onSubmit={onSubmit}
-          isSubmitting={formState.isSubmitting}
-        >
-          {customerForm}
-        </ResourceFormDialog>
-      </>
-    );
-  }
 
   if (mode === 'detail') {
     if (detailQuery.isLoading) return <LoadingState />;
@@ -345,33 +310,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
     );
   }
 
-  return (
-    <ResourceFrame title={formTitle}>
-      <Paper
-        component="form"
-        onSubmit={onSubmit}
-        sx={{
-          p: { xs: 2, md: 2.5 },
-          boxShadow: 2,
-          width: '100%',
-          overflow: 'hidden'
-        }}
-      >
-        <Stack spacing={2}>
-          {customerForm}
-          <Divider />
-          <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
-            <Button component={RouterLink} to="/customers" variant="outlined" startIcon={<ArrowBackRoundedIcon />}>
-              {t('cancel')}
-            </Button>
-            <Button type="submit" variant="contained" startIcon={<SaveRoundedIcon />} disabled={formState.isSubmitting}>
-              {t('save')}
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
-    </ResourceFrame>
-  );
+  return <LoadingState />;
 }
 
 function VehiclePage({ mode }: { mode: Mode }) {
@@ -382,17 +321,18 @@ function VehiclePage({ mode }: { mode: Mode }) {
   const { showToast } = useToast();
   const [errorMessage, setErrorMessage] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
   const listQuery = useQuery({
     queryKey: ['vehicles', submittedSearchTerm],
     queryFn: () => vehiclesApi.list(cleanVehicleSearch(submittedSearchTerm)),
-    enabled: mode === 'list' || mode === 'create'
+    enabled: mode === 'list'
   });
   const detailQuery = useQuery({
     queryKey: ['vehicles', id],
     queryFn: () => vehiclesApi.get(id!),
-    enabled: Boolean(id) && mode !== 'create' && mode !== 'list'
+    enabled: Boolean(id) && mode !== 'list'
   });
   const historyQuery = useQuery({
     queryKey: ['vehicles', id, 'service-history'],
@@ -402,7 +342,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
   const customersQuery = useQuery({
     queryKey: ['customers', 'vehicle-picker'],
     queryFn: () => customersApi.list(),
-    enabled: mode !== 'list'
+    enabled: mode !== 'list' || createDialogOpen
   });
   const { control, handleSubmit, reset, setError, formState } = useForm<VehicleForm>({
     resolver: zodResolver(vehicleSchema) as never,
@@ -417,65 +357,14 @@ function VehiclePage({ mode }: { mode: Mode }) {
     }
   }, [detailQuery.data, reset]);
 
-  if (mode === 'list') {
-    if (listQuery.isLoading) return <LoadingState />;
-    if (listQuery.isError) return <ErrorState error={listQuery.error} />;
-    const resetSearch = () => {
-      setSearchTerm('');
-      setSubmittedSearchTerm('');
-    };
-    return (
-      <ResourceFrame title={t('vehicles')} actionLabel={t('newVehicle')} actionTo="/vehicles/new" actionIcon={<AddRoundedIcon />}>
-        <Paper sx={{ p: 2 }}>
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={2}
-            component="form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setSubmittedSearchTerm(searchTerm);
-            }}
-          >
-            <TextField
-              name="vehicleSearch"
-              label={t('search')}
-              placeholder={t('searchVehiclePlaceholder')}
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              InputProps={{
-                endAdornment: searchTerm ? (
-                  <InputAdornment position="end">
-                    <IconButton aria-label={t('clearVehicleQuery')} edge="end" onClick={() => setSearchTerm('')}>
-                      <ClearRoundedIcon />
-                    </IconButton>
-                  </InputAdornment>
-                ) : null
-              }}
-              fullWidth
-            />
-            <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
-              {t('search')}
-            </Button>
-            <Button type="button" variant="text" startIcon={<RestartAltRoundedIcon />} onClick={resetSearch} sx={{ minWidth: 120 }}>
-              {t('reset')}
-            </Button>
-          </Stack>
-        </Paper>
-        <VehicleTable vehicles={listQuery.data ?? []} searchTerm={submittedSearchTerm} />
-      </ResourceFrame>
-    );
-  }
-
-  if (mode === 'edit' && detailQuery.isLoading) return <LoadingState />;
-  if (mode === 'edit' && detailQuery.isError) return <ErrorState error={detailQuery.error} />;
-
   const onSubmit = handleSubmit(async (values) => {
     setErrorMessage('');
     try {
-      const saved = mode === 'create' ? await createMutation.mutateAsync(values) : await updateMutation.mutateAsync(values);
+      const saved = id ? await updateMutation.mutateAsync(values) : await createMutation.mutateAsync(values);
       await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-      showToast(t(mode === 'create' ? 'saved' : 'updated'));
+      showToast(t(id ? 'updated' : 'saved'));
       setEditDialogOpen(false);
+      setCreateDialogOpen(false);
       navigate(`/vehicles/${saved.id}`);
     } catch (error) {
       applyApiFieldErrors(error, setError, {
@@ -486,8 +375,13 @@ function VehiclePage({ mode }: { mode: Mode }) {
     }
   });
 
-  const isCreate = mode === 'create';
-  const formTitle = isCreate ? t('newVehicle') : `${t('edit')} ${detailQuery.data?.plate ?? ''}`;
+  const openCreateDialog = () => {
+    setErrorMessage('');
+    reset({ customerId: '', plate: '', make: '', model: '', year: new Date().getFullYear(), vin: '', fuelType: '', engine: '' });
+    setCreateDialogOpen(true);
+  };
+
+  const formTitle = `${t('edit')} ${detailQuery.data?.plate ?? ''}`;
   const vehicleForm = (
     <>
       <ApiErrorAlert message={errorMessage} />
@@ -546,67 +440,69 @@ function VehiclePage({ mode }: { mode: Mode }) {
     </>
   );
 
-  if (isCreate) {
+  if (mode === 'list') {
+    if (listQuery.isLoading) return <LoadingState />;
+    if (listQuery.isError) return <ErrorState error={listQuery.error} />;
+    const resetSearch = () => {
+      setSearchTerm('');
+      setSubmittedSearchTerm('');
+    };
     return (
       <>
-        {listQuery.isLoading ? (
-          <LoadingState />
-        ) : listQuery.isError ? (
-          <ErrorState error={listQuery.error} />
-        ) : (
-          <ResourceFrame title={t('vehicles')} actionLabel={t('newVehicle')} actionTo="/vehicles/new" actionIcon={<AddRoundedIcon />}>
-            <Paper sx={{ p: 2 }}>
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                spacing={2}
-                component="form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setSubmittedSearchTerm(searchTerm);
-                }}
-              >
-                <TextField
-                  name="vehicleSearch"
-                  label={t('search')}
-                  placeholder={t('searchVehiclePlaceholder')}
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  InputProps={{
-                    endAdornment: searchTerm ? (
-                      <InputAdornment position="end">
-                        <IconButton aria-label={t('clearVehicleQuery')} edge="end" onClick={() => setSearchTerm('')}>
-                          <ClearRoundedIcon />
-                        </IconButton>
-                      </InputAdornment>
-                    ) : null
-                  }}
-                  fullWidth
-                />
-                <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
-                  {t('search')}
-                </Button>
-                <Button type="button" variant="text" startIcon={<RestartAltRoundedIcon />} onClick={() => {
-                  setSearchTerm('');
-                  setSubmittedSearchTerm('');
-                }} sx={{ minWidth: 120 }}>
-                  {t('reset')}
-                </Button>
-              </Stack>
-            </Paper>
-            <VehicleTable vehicles={listQuery.data ?? []} searchTerm={submittedSearchTerm} />
-          </ResourceFrame>
-        )}
-        <ResourceFormDialog
-          title={formTitle}
-          closeTo="/vehicles"
-          onSubmit={onSubmit}
-          isSubmitting={formState.isSubmitting}
-        >
-          {vehicleForm}
-        </ResourceFormDialog>
+      <ResourceFrame title={t('vehicles')} actionLabel={t('newVehicle')} onAction={openCreateDialog} actionIcon={<AddRoundedIcon />}>
+        <Paper sx={{ p: 2 }}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            component="form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSubmittedSearchTerm(searchTerm);
+            }}
+          >
+            <TextField
+              name="vehicleSearch"
+              label={t('search')}
+              placeholder={t('searchVehiclePlaceholder')}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              InputProps={{
+                endAdornment: searchTerm ? (
+                  <InputAdornment position="end">
+                    <IconButton aria-label={t('clearVehicleQuery')} edge="end" onClick={() => setSearchTerm('')}>
+                      <ClearRoundedIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null
+              }}
+              fullWidth
+            />
+            <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
+              {t('search')}
+            </Button>
+            <Button type="button" variant="text" startIcon={<RestartAltRoundedIcon />} onClick={resetSearch} sx={{ minWidth: 120 }}>
+              {t('reset')}
+            </Button>
+          </Stack>
+        </Paper>
+        <VehicleTable vehicles={listQuery.data ?? []} searchTerm={submittedSearchTerm} />
+      </ResourceFrame>
+        {createDialogOpen ? (
+          <ResourceFormDialog
+            title={t('newVehicle')}
+            onClose={() => setCreateDialogOpen(false)}
+            onSubmit={onSubmit}
+            isSubmitting={formState.isSubmitting}
+          >
+            {vehicleForm}
+          </ResourceFormDialog>
+        ) : null}
       </>
     );
   }
+
+  if (mode === 'edit' && detailQuery.isLoading) return <LoadingState />;
+  if (mode === 'edit' && detailQuery.isError) return <ErrorState error={detailQuery.error} />;
 
   if (mode === 'detail') {
     if (detailQuery.isLoading) return <LoadingState />;
@@ -678,18 +574,7 @@ function VehiclePage({ mode }: { mode: Mode }) {
     );
   }
 
-  return (
-    <ResourceFrame title={formTitle}>
-      <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
-        <Stack spacing={2.5}>
-          {vehicleForm}
-          <Button sx={{ alignSelf: 'flex-start' }} type="submit" variant="contained" disabled={formState.isSubmitting}>
-            {t('save')}
-          </Button>
-        </Stack>
-      </Paper>
-    </ResourceFrame>
-  );
+  return <LoadingState />;
 }
 
 function ResourceFormDialog({
@@ -764,13 +649,13 @@ function fieldIcon(icon: React.ReactNode) {
   );
 }
 
-function ResourceFrame({ title, children, actionLabel, actionTo, actionIcon }: { title: string; children: React.ReactNode; actionLabel?: string; actionTo?: string; actionIcon?: React.ReactNode }) {
+function ResourceFrame({ title, children, actionLabel, onAction, actionIcon }: { title: string; children: React.ReactNode; actionLabel?: string; onAction?: () => void; actionIcon?: React.ReactNode }) {
   return (
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
         <Typography variant="h2">{title}</Typography>
-        {actionTo && actionLabel ? (
-          <Button component={RouterLink} to={actionTo} variant="contained" startIcon={actionIcon}>
+        {onAction && actionLabel ? (
+          <Button onClick={onAction} variant="contained" startIcon={actionIcon}>
             {actionLabel}
           </Button>
         ) : null}

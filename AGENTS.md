@@ -5,9 +5,9 @@
 Before writing code always read:
 
 - srs_mk.md
+- sds_mk.md
 - mini_specification_mk.md
 - business-rules.md
-- spec-implementation-check.md
 ---
 
 ## Tech Stack

@@ -16,7 +16,7 @@ const userKey = 'carcare.user';
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const readStoredUser = () => {
-  const value = sessionStorage.getItem(userKey);
+  const value = localStorage.getItem(userKey);
   return value ? (JSON.parse(value) as User) : null;
 };
 
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (response) => {
       tokenStorage.set(response.accessToken);
       refreshTokenStorage.set(response.refreshToken);
-      sessionStorage.setItem(userKey, JSON.stringify(response.user));
+      localStorage.setItem(userKey, JSON.stringify(response.user));
       setUser(response.user);
     }
   });
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       logout: async () => {
         await authApi.logout();
-        sessionStorage.removeItem(userKey);
+        localStorage.removeItem(userKey);
         setUser(null);
       }
     }),

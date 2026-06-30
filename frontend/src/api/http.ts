@@ -147,15 +147,15 @@ const accessTokenExpiresSoon = (token: string) => {
 };
 
 export const tokenStorage = {
-  get: () => sessionStorage.getItem(accessTokenKey),
-  set: (token: string) => sessionStorage.setItem(accessTokenKey, token),
-  clear: () => sessionStorage.removeItem(accessTokenKey)
+  get: () => localStorage.getItem(accessTokenKey),
+  set: (token: string) => localStorage.setItem(accessTokenKey, token),
+  clear: () => localStorage.removeItem(accessTokenKey)
 };
 
 export const refreshTokenStorage = {
-  get: () => sessionStorage.getItem(refreshTokenKey),
-  set: (token: string) => sessionStorage.setItem(refreshTokenKey, token),
-  clear: () => sessionStorage.removeItem(refreshTokenKey)
+  get: () => localStorage.getItem(refreshTokenKey),
+  set: (token: string) => localStorage.setItem(refreshTokenKey, token),
+  clear: () => localStorage.removeItem(refreshTokenKey)
 };
 
 export const http = axios.create({

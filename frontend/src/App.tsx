@@ -49,7 +49,6 @@ function RequireRole({ role, children }: { role: Role; children: ReactElement })
 
 const resourceRoutes = (kind: 'customers' | 'vehicles') => [
   { index: true, element: <ResourcePage kind={kind} mode="list" /> },
-  { path: 'new', element: <ResourcePage kind={kind} mode="create" /> },
   { path: ':id', element: <ResourcePage kind={kind} mode="detail" /> },
   { path: ':id/edit', element: <ResourcePage kind={kind} mode="edit" /> }
 ];

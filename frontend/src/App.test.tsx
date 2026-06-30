@@ -33,6 +33,7 @@ function renderWithProviders(ui: React.ReactElement) {
 describe('CarCare frontend baseline', () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -68,8 +69,8 @@ describe('CarCare frontend baseline', () => {
   });
 
   it('shows the admin navigation item only for admin users', async () => {
-    sessionStorage.setItem('carcare.accessToken', 'access-token');
-    sessionStorage.setItem('carcare.user', JSON.stringify({
+    localStorage.setItem('carcare.accessToken', 'access-token');
+    localStorage.setItem('carcare.user', JSON.stringify({
       id: '2',
       email: 'tech@carcare.test',
       fullName: 'Technician',
@@ -83,7 +84,7 @@ describe('CarCare frontend baseline', () => {
     expect(employeeView.container.querySelector('a[href="/admin"]')).not.toBeInTheDocument();
     employeeView.unmount();
 
-    sessionStorage.setItem('carcare.user', JSON.stringify({
+    localStorage.setItem('carcare.user', JSON.stringify({
       id: '1',
       email: 'admin@carcare.test',
       fullName: 'Admin User',
