@@ -47,7 +47,13 @@ public class EmailService implements HtmlEmailSender, HtmlAttachmentEmailSender 
       helper.setTo(recipient);
       helper.setSubject(subject);
       helper.setText(textBody, htmlBody);
+
+      long start = System.currentTimeMillis();
+      log.info("Before send");
       mailSender.send(message);
+      long end = System.currentTimeMillis() - start;
+      log.info("After send: {} ms", end);
+
       log.info("Email sent. Type: HTML. Recipient: {}. Subject: {}", LogSanitizer.email(recipient), subject);
       return new EmailDeliveryResult(recipient, subject, true, "Email sent");
     } catch (MessagingException | MailException ex) {
@@ -65,7 +71,13 @@ public class EmailService implements HtmlEmailSender, HtmlAttachmentEmailSender 
       helper.setSubject(subject);
       helper.setText(textBody, htmlBody);
       helper.addAttachment(attachmentName, new ByteArrayResource(attachment), contentType);
+
+      long start = System.currentTimeMillis();
+      log.info("Before send");
       mailSender.send(message);
+      long end = System.currentTimeMillis() - start;
+      log.info("After send: {} ms", end);
+
       log.info("Email sent. Type: HTML with attachment. Recipient: {}. Subject: {}. Attachment: {}. Content type: {}", LogSanitizer.email(recipient), subject, attachmentName, contentType);
       return new EmailDeliveryResult(recipient, subject, true, "Email sent");
     } catch (MessagingException | MailException ex) {

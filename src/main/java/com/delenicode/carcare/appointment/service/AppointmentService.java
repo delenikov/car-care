@@ -58,9 +58,13 @@ public class AppointmentService {
   @Transactional(readOnly = true)
   public List<AppointmentSlotResponse> availableSlots(LocalDate date) {
     List<AppointmentSlotResponse> slots = new ArrayList<>();
+    OffsetDateTime now = OffsetDateTime.now(timePolicy.businessZone());
     for (int hour = timePolicy.firstBusinessHour(); hour < timePolicy.lastBusinessHourExclusive(); hour++) {
       OffsetDateTime startsAt = timePolicy.atBusinessZone(date, hour);
       OffsetDateTime endsAt = startsAt.plusHours(1);
+      if (startsAt.isBefore(now)) {
+        continue;
+      }
       if (!conflictValidator.hasConflict(startsAt, endsAt, null)) {
         slots.add(new AppointmentSlotResponse(startsAt, endsAt));
       }

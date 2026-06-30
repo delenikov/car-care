@@ -29,6 +29,7 @@ import com.delenicode.carcare.vehicle.model.Vehicle;
 import com.delenicode.carcare.vehicle.repository.VehicleRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.TimeZone;
@@ -207,8 +208,10 @@ class AppointmentServiceTest {
 
   @Test
   void availableSlotsExcludeConflictingHours() {
-    LocalDate date = LocalDate.of(2026, 6, 15);
-    OffsetDateTime nine = OffsetDateTime.parse("2026-06-15T09:00:00+02:00");
+    // Use "tomorrow" rather than a fixed calendar date: availableSlots() now also filters out hours
+    // that have already passed, so a hardcoded past date would return zero slots regardless of conflicts.
+    LocalDate date = LocalDate.now(ZoneId.of("Europe/Skopje")).plusDays(1);
+    OffsetDateTime nine = date.atTime(9, 0).atZone(ZoneId.of("Europe/Skopje")).toOffsetDateTime();
     when(appointments.findConflicts(any(), any(), any())).thenAnswer(invocation -> {
       OffsetDateTime startsAt = invocation.getArgument(0);
       return startsAt.equals(nine) ? List.of(new Appointment()) : List.of();
@@ -216,10 +219,19 @@ class AppointmentServiceTest {
 
     var slots = appointmentService.availableSlots(date);
 
-    assertThat(slots.get(0).startsAt()).isEqualTo(OffsetDateTime.parse("2026-06-15T08:00:00+02:00"));
-    assertThat(slots.get(slots.size() - 1).endsAt()).isEqualTo(OffsetDateTime.parse("2026-06-15T16:00:00+02:00"));
+    assertThat(slots.get(0).startsAt()).isEqualTo(date.atTime(8, 0).atZone(ZoneId.of("Europe/Skopje")).toOffsetDateTime());
+    assertThat(slots.get(slots.size() - 1).endsAt()).isEqualTo(date.atTime(16, 0).atZone(ZoneId.of("Europe/Skopje")).toOffsetDateTime());
     assertThat(slots).noneMatch(slot -> slot.startsAt().equals(nine));
     assertThat(slots).hasSize(7);
+  }
+
+  @Test
+  void availableSlotsExcludeHoursThatHaveAlreadyPassed() {
+    LocalDate yesterday = LocalDate.now(ZoneId.of("Europe/Skopje")).minusDays(1);
+
+    var slots = appointmentService.availableSlots(yesterday);
+
+    assertThat(slots).isEmpty();
   }
 
   @Test

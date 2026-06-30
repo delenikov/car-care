@@ -4,7 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Accordion, AccordionDetails, AccordionSummary, Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, TextField, Typography } from '@mui/material';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm, useWatch } from 'react-hook-form';
@@ -267,7 +267,7 @@ export function AppointmentsPage() {
             <ApiErrorAlert message={errorMessage} />
             <DateInput
               name="slotDate"
-              label={t('checkAvailabilityDate')}
+              label={t('date')}
               value={slotDate}
               error={false}
               onBlur={() => undefined}
@@ -276,6 +276,8 @@ export function AppointmentsPage() {
             />
             {availableQuery.isError ? (
               <ApiErrorAlert message={apiErrorMessage(availableQuery.error, t('loadFailed'))} />
+            ) : availableQuery.data?.length === 0 && !availableQuery.isLoading ? (
+              <Alert severity="warning" variant="filled">{t('noAvailableSlots')}</Alert>
             ) : (
               <Stack direction="row" flexWrap="wrap" gap={1}>
                 {(availableQuery.data ?? []).map((slot) => (

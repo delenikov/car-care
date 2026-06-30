@@ -25,6 +25,14 @@ public final class LogSanitizer {
     if (path == null || path.isBlank()) {
       return "/";
     }
-    return CANCEL_TOKEN_PATH.matcher(path).replaceAll("$1{token}");
+
+    path = CANCEL_TOKEN_PATH.matcher(path).replaceAll("$1{token}");
+
+    return path
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\r", "\\r")
+        .replace("\n", "\\n")
+        .replace("\t", "\\t");
   }
 }

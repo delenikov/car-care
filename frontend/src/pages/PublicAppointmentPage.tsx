@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Paper, Stack, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
@@ -83,14 +83,13 @@ export function PublicAppointmentPage() {
       <Stack spacing={3} sx={{ maxWidth: 920, mx: 'auto' }}>
         <Box>
           <Typography variant="h2">{t('bookAppointment')}</Typography>
-          <Typography color="text.secondary">{t('availableDate')}: 08:00 - 16:00</Typography>
         </Box>
         <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 } }}>
           <Stack spacing={3}>
             <ApiErrorAlert message={errorMessage} />
             <DateInput
               name="slotDate"
-              label={t('availableDate')}
+              label={t('date')}
               value={slotDate}
               error={false}
               onBlur={() => undefined}
@@ -99,6 +98,8 @@ export function PublicAppointmentPage() {
             />
             {availableQuery.isError ? (
               <ApiErrorAlert message={apiErrorMessage(availableQuery.error, t('loadFailed'))} />
+            ) : availableQuery.data?.length === 0 && !availableQuery.isLoading ? (
+              <Alert severity="warning" variant="filled">{t('noAvailableSlots')}</Alert>
             ) : (
               <Stack direction="row" flexWrap="wrap" gap={1}>
                 {(availableQuery.data ?? []).map((slot) => (

@@ -21,13 +21,14 @@ spring:
     port: 1025
     properties:
       mail:
+        debug: true
         smtp:
           auth: false
+          starttls:
+            enable: false
           connectiontimeout: 2000
           timeout: 2000
           writetimeout: 2000
-          starttls:
-            enable: false
   flyway:
     enabled: true
     locations: classpath:db/migration
