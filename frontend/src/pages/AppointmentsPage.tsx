@@ -3,6 +3,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
+import mkLocale from '@fullcalendar/core/locales/mk';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, TextField, Typography } from '@mui/material';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
@@ -227,9 +228,13 @@ export function AppointmentsPage() {
         <Paper sx={{ p: { xs: 2, md: 3 }, minWidth: 0, alignSelf: 'start' }}>
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            locales={[mkLocale]}
+            locale='mk'
             initialView="timeGridWeek"
             firstDay={1}
             headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+            dayHeaderFormat={{ weekday: 'short', month: 'numeric', day: 'numeric' }}
+            titleFormat={{ year: 'numeric', month: 'long', day: 'numeric' }}
             events={events}
             editable
             selectable
