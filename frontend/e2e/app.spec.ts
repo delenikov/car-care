@@ -241,9 +241,9 @@ async function mockBackend(page: Page) {
 
 async function signIn(page: Page, user = admin) {
   await page.addInitScript((storedUser) => {
-    window.sessionStorage.setItem('carcare.accessToken', 'access-token');
-    window.sessionStorage.setItem('carcare.refreshToken', 'refresh-token');
-    window.sessionStorage.setItem('carcare.user', JSON.stringify(storedUser));
+    window.localStorage.setItem('carcare.accessToken', 'access-token');
+    window.localStorage.setItem('carcare.refreshToken', 'refresh-token');
+    window.localStorage.setItem('carcare.user', JSON.stringify(storedUser));
   }, user);
 }
 
@@ -376,12 +376,13 @@ test('creates a customer with the backend DTO shape expected by the API client',
     await route.fallback();
   });
 
-  await page.goto('/customers/new');
+  await page.goto('/customers');
+  await page.getByRole('button', { name: 'Нов клиент' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.locator('input[name="name"]').fill('Grace Hopper');
   await page.locator('input[name="phone"]').fill('+38970222222');
   await page.locator('input[name="email"]').fill('grace@carcare.test');
-  await page.locator('textarea[name="notes"]').fill('Compiler Street');
+  await page.locator('input[name="notes"]').fill('Compiler Street');
   await page.getByRole('dialog').getByRole('button', { name: 'Зачувај' }).click();
 
   await expect(page).toHaveURL(/\/customers\/999$/);
@@ -546,7 +547,8 @@ test('searches creates and updates vehicles with backend DTO mapping', async ({ 
     });
   });
 
-  await page.goto('/vehicles/new');
+  await page.goto('/vehicles');
+  await page.getByRole('button', { name: 'Ново возило' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByLabel('Клиент').fill('Ada');
   await page.getByRole('option', { name: /Ada Lovelace/ }).click();
@@ -746,9 +748,9 @@ test('shows available appointments and schedules without conflicts', async ({ pa
   await page.goto('/appointments');
   await expect(page.getByText('Oil change').first()).toBeVisible();
   await expect(page.getByText('Cancelled check')).toHaveCount(0);
-  await expect(page.getByRole('group', { name: 'Провери достапност за датум' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Датум' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Напредно / сопствено време' })).toBeVisible();
-  await fillDatePickerGroup(page, 'Провери достапност за датум', '20.06.2026');
+  await fillDatePickerGroup(page, 'Датум', '20.06.2026');
   const availableSlot = page.locator('.MuiChip-root').filter({ hasText: '08:00' });
   await expect(availableSlot).toBeVisible();
   expect(availableUrl).toContain('date=2026-06-20');
@@ -1072,7 +1074,10 @@ test('sends generated service documents and exports PDFs', async ({ page }) => {
 
   await page.goto('/documents');
   await expect(page.getByText('Inspection report.pdf')).toBeVisible();
+  // Headless Chromium downloads PDF blob URLs loaded in iframes — listen before clicking to drain the event
+  const iframeDownloadPromise = page.waitForEvent('download', { timeout: 5000 });
   await page.getByRole('button', { name: 'Преглед' }).click();
+  await iframeDownloadPromise;
   await expect(page.locator('iframe[title="Inspection report.pdf"]')).toBeVisible();
   await expect.poll(() => documentPdfCalled).toBeTruthy();
   documentPdfCalled = false;

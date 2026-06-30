@@ -19,7 +19,6 @@ import com.delenicode.carcare.customer.model.Customer;
 import com.delenicode.carcare.customer.repository.CustomerRepository;
 import com.delenicode.carcare.common.PageResponse;
 import com.delenicode.carcare.loyalty.service.CustomerLoyaltyService;
-import com.delenicode.carcare.notification.PdfService;
 import com.delenicode.carcare.vehicle.model.Vehicle;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -41,13 +40,13 @@ public class OfferService {
   private final OfferRepository offers;
   private final CustomerRepository customers;
   private final VehicleRepository vehicles;
-  private final PdfService pdfService;
   private final CustomerLoyaltyService loyalty;
   private final ApplicationEventPublisher events;
   private final OfferPricingService pricing;
   private final OfferMapper mapper;
   private final OfferEmailRenderer emailRenderer;
   private final OfferDeliveryService deliveryService;
+  private final OfferPdfRenderer pdfRenderer;
 
   @Transactional(readOnly = true)
   public PageResponse<OfferResponse> findAll(Pageable pageable) {
@@ -123,7 +122,7 @@ public class OfferService {
   public byte[] exportPdf(Long id) {
     Offer offer = offers.findByIdWithDetails(id).orElseThrow(() -> new OfferNotFoundException(id));
     log.info("Offer PDF exported. Offer ID: {}. Customer ID: {}", offer.getId(), offer.getCustomer().getId());
-    return pdfService.renderServiceSummary("Понуда за сервис: " + offer.getTitle(), emailRenderer.renderText(offer));
+    return pdfRenderer.render(offer);
   }
 
   private Vehicle resolveVehicle(Long vehicleId, Customer customer) {

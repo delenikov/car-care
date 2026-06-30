@@ -4,10 +4,10 @@ package com.delenicode.carcare;
 import com.delenicode.carcare.offer.dto.request.OfferPartRequest;
 import com.delenicode.carcare.offer.dto.request.OfferRequest;
 import com.delenicode.carcare.offer.service.OfferEmailRenderer;
+import com.delenicode.carcare.offer.service.OfferPdfRenderer;
 import com.delenicode.carcare.vehicle.repository.VehicleRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -15,7 +15,6 @@ import static org.mockito.Mockito.when;
 import com.delenicode.carcare.customer.model.Customer;
 import com.delenicode.carcare.customer.repository.CustomerRepository;
 import com.delenicode.carcare.loyalty.service.CustomerLoyaltyService;
-import com.delenicode.carcare.notification.PdfService;
 import com.delenicode.carcare.offer.model.Offer;
 import com.delenicode.carcare.offer.event.OfferCreatedEvent;
 import com.delenicode.carcare.offer.service.OfferDeliveryService;
@@ -49,8 +48,6 @@ class OfferServiceTest {
   @Mock
   VehicleRepository vehicles;
   @Mock
-  PdfService pdfService;
-  @Mock
   CustomerLoyaltyService loyalty;
   @Mock
   ApplicationEventPublisher events;
@@ -58,6 +55,8 @@ class OfferServiceTest {
   OfferEmailRenderer emailRenderer;
   @Mock
   OfferDeliveryService deliveryService;
+  @Mock
+  OfferPdfRenderer pdfRenderer;
 
   OfferPricingService pricing;
   OfferMapper mapper;
@@ -67,7 +66,7 @@ class OfferServiceTest {
   void setUp() {
     pricing = new OfferPricingService();
     mapper = new OfferMapper(pricing);
-    offerService = new OfferService(offers, customers, vehicles, pdfService, loyalty, events, pricing, mapper, emailRenderer, deliveryService);
+    offerService = new OfferService(offers, customers, vehicles, loyalty, events, pricing, mapper, emailRenderer, deliveryService, pdfRenderer);
   }
 
   @Test
@@ -146,14 +145,13 @@ class OfferServiceTest {
   }
 
   @Test
-  void exportPdfUsesRendererTextAndPdfService() {
+  void exportPdfDelegatesToPdfRenderer() {
     Offer offer = offer();
     when(offers.findByIdWithDetails(20L)).thenReturn(Optional.of(offer));
-    when(emailRenderer.renderText(offer)).thenReturn("Вкупно: 2.000,00 ден.");
-    when(pdfService.renderServiceSummary(any(), any())).thenReturn("%PDF".getBytes());
+    when(pdfRenderer.render(offer)).thenReturn("%PDF".getBytes());
 
     assertThat(offerService.exportPdf(20L)).startsWith("%PDF".getBytes());
-    verify(pdfService).renderServiceSummary(eq("Понуда за сервис: Brake inspection"), eq("Вкупно: 2.000,00 ден."));
+    verify(pdfRenderer).render(offer);
   }
 
   private Customer customer() {

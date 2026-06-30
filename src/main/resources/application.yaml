@@ -47,6 +47,8 @@ app:
     secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     access-minutes: 15
     refresh-days: 30
+  seeder:
+    enabled: true  # set to true (or pass --app.seeder.enabled=true) to populate test data
 springdoc:
   api-docs:
     path: /v3/api-docs

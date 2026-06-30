@@ -15,6 +15,7 @@ import com.lowagie.text.pdf.PdfWriter;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -36,6 +37,125 @@ public class PdfService {
       "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
       "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"
   };
+
+  public byte[] renderOfferReport(
+      String offerId,
+      String title,
+      String description,
+      String issueDate,
+      String expiresOn,
+      String customerName,
+      String customerAddress,
+      String customerEmail,
+      String vehicle,
+      List<String[]> parts,
+      String partsCost,
+      String laborCost,
+      boolean hasDiscount,
+      String discountLabel,
+      String discountAmount,
+      String subtotal,
+      String total) {
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      Document doc = new Document(PageSize.A4, 36, 36, 36, 36);
+      PdfWriter writer = PdfWriter.getInstance(doc, out);
+      doc.open();
+
+      PdfContentByte canvas = writer.getDirectContentUnder();
+      canvas.setColorFill(BACKGROUND);
+      canvas.rectangle(0, 0, PageSize.A4.getWidth(), PageSize.A4.getHeight());
+      canvas.fill();
+
+      Font brandFont       = font(BOLD_FONT_CANDIDATES,    18, Font.BOLD,   Color.WHITE);
+      Font headerSmallFont = font(REGULAR_FONT_CANDIDATES, 10, Font.NORMAL, DARK_MUTED);
+      Font offerTitleFont  = font(BOLD_FONT_CANDIDATES,    20, Font.BOLD,   ACCENT);
+      Font sectionLabelFont= font(BOLD_FONT_CANDIDATES,     9, Font.BOLD,   MUTED);
+      Font bodyFont        = font(REGULAR_FONT_CANDIDATES, 10, Font.NORMAL, MUTED);
+      Font bodyBoldFont    = font(BOLD_FONT_CANDIDATES,    10, Font.BOLD,   INK);
+      Font tableHeaderFont = font(BOLD_FONT_CANDIDATES,    10, Font.BOLD,   INK);
+      Font totalFont       = font(BOLD_FONT_CANDIDATES,    18, Font.BOLD,   INK);
+
+      PdfPTable wrapper = new PdfPTable(1);
+      wrapper.setWidthPercentage(100);
+      wrapper.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+
+      // Header row: brand name left, "ПОНУДА ЗА СЕРВИС / #id" right
+      PdfPTable header = new PdfPTable(new float[]{ 0.52f, 0.48f });
+      header.setWidthPercentage(100);
+      header.addCell(headerBlock("CarCare", "", Element.ALIGN_LEFT, brandFont, headerSmallFont));
+      header.addCell(headerBlock("ПОНУДА ЗА СЕРВИС", "Бр. #" + offerId, Element.ALIGN_RIGHT, offerTitleFont, headerSmallFont));
+      wrapper.addCell(block(header, INK, 26, 30, 18, 30));
+
+      // Customer block (left) + offer meta block (right)
+      PdfPTable infoTable = new PdfPTable(new float[]{ 0.5f, 0.5f });
+      infoTable.setWidthPercentage(100);
+      infoTable.addCell(customerBlock(customerName, customerAddress, customerEmail, sectionLabelFont, bodyBoldFont, bodyFont));
+      infoTable.addCell(offerMetaBlock(issueDate, expiresOn, vehicle, bodyFont, bodyBoldFont));
+      wrapper.addCell(block(infoTable, PAPER, 24, 30, 10, 30));
+
+      // Title + description
+      PdfPTable descTable = new PdfPTable(new float[]{ 0.32f, 0.68f });
+      descTable.setWidthPercentage(100);
+      descTable.addCell(tableHeader("Поле", tableHeaderFont));
+      descTable.addCell(tableHeader("Информација", tableHeaderFont));
+      descTable.addCell(detailLabel("Наслов", bodyBoldFont));
+      descTable.addCell(detailValue(title, bodyFont));
+      if (description != null && !description.isBlank()) {
+        descTable.addCell(detailLabel("Опис", bodyBoldFont));
+        descTable.addCell(detailValue(description, bodyFont));
+      }
+      wrapper.addCell(block(descTable, PAPER, 10, 30, 0, 30));
+
+      // Parts table (shown only when the offer has individual parts)
+      if (!parts.isEmpty()) {
+        PdfPTable partsTable = new PdfPTable(new float[]{ 0.72f, 0.28f });
+        partsTable.setWidthPercentage(100);
+        partsTable.addCell(tableHeader("Дел / услуга", tableHeaderFont));
+        partsTable.addCell(tableHeaderRight("Цена", tableHeaderFont));
+        for (String[] part : parts) {
+          partsTable.addCell(detailLabel(part[0], bodyBoldFont));
+          partsTable.addCell(detailValueRight(part[1], bodyFont));
+        }
+        wrapper.addCell(block(partsTable, PAPER, 12, 30, 0, 30));
+      }
+
+      // Cost breakdown
+      PdfPTable totalsTable = new PdfPTable(new float[]{ 0.6f, 0.4f });
+      totalsTable.setWidthPercentage(100);
+      totalsTable.addCell(costLabel("Цена на делови", bodyBoldFont));
+      totalsTable.addCell(costValue(partsCost, bodyFont));
+      totalsTable.addCell(costLabel("Цена на работа", bodyBoldFont));
+      totalsTable.addCell(costValue(laborCost, bodyFont));
+      if (hasDiscount) {
+        totalsTable.addCell(costLabel("Меѓусума", bodyBoldFont));
+        totalsTable.addCell(costValue(subtotal, bodyFont));
+        totalsTable.addCell(costLabel(discountLabel, bodyBoldFont));
+        totalsTable.addCell(costValue("- " + discountAmount, bodyFont));
+      }
+      totalsTable.addCell(totalLabel("ВКУПНО", totalFont));
+      totalsTable.addCell(totalValue(total, totalFont));
+      wrapper.addCell(block(totalsTable, PAPER, 12, 30, 28, 30));
+
+      // Footer note
+      String footerText = expiresOn != null
+          ? "Оваа понуда е важечка до " + expiresOn + ". Ви благодариме за довербата."
+          : "Ви благодариме за довербата.";
+      PdfPCell footerCell = new PdfPCell(new Phrase(footerText, bodyFont));
+      footerCell.setBorder(Rectangle.NO_BORDER);
+      footerCell.setPaddingTop(0);
+      footerCell.setPaddingRight(30);
+      footerCell.setPaddingBottom(26);
+      footerCell.setPaddingLeft(30);
+      footerCell.setBackgroundColor(PAPER);
+      wrapper.addCell(footerCell);
+
+      doc.add(wrapper);
+      doc.close();
+      return out.toByteArray();
+    } catch (Exception ex) {
+      throw new IllegalStateException("PDF generation failed", ex);
+    }
+  }
 
   public byte[] renderServiceSummary(String title, String body) {
     try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -317,5 +437,31 @@ public class PdfService {
       }
     }
     return new Font(Font.HELVETICA, size, style, color);
+  }
+
+  private PdfPCell offerMetaBlock(String issueDate, String expiresOn, String vehicle, Font labelFont, Font valueFont) {
+    PdfPTable table = new PdfPTable(new float[]{ 0.42f, 0.58f });
+    table.setWidthPercentage(100);
+    serviceInfoRow(table, "Датум на понуда:", issueDate, labelFont, valueFont);
+    if (expiresOn != null) {
+      serviceInfoRow(table, "Важи до:", expiresOn, labelFont, valueFont);
+    }
+    serviceInfoRow(table, "Возило:", vehicle, labelFont, valueFont);
+    PdfPCell cell = new PdfPCell(table);
+    cell.setBorder(Rectangle.NO_BORDER);
+    cell.setBackgroundColor(PAPER);
+    return cell;
+  }
+
+  private PdfPCell tableHeaderRight(String value, Font font) {
+    PdfPCell cell = tableHeader(value, font);
+    cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+    return cell;
+  }
+
+  private PdfPCell detailValueRight(String value, Font font) {
+    PdfPCell cell = detailValue(value, font);
+    cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+    return cell;
   }
 }
