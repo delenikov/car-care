@@ -95,11 +95,11 @@ function CustomerPage({ mode }: { mode: Mode }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [filters, setFilters] = useState({ firstName: '', lastName: '' });
-  const [submittedFilters, setSubmittedFilters] = useState(filters);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
   const listQuery = useQuery({
-    queryKey: ['customers', submittedFilters],
-    queryFn: () => customersApi.list(cleanFilters(submittedFilters)),
+    queryKey: ['customers', submittedSearchTerm],
+    queryFn: () => customersApi.list(cleanCustomerSearch(submittedSearchTerm)),
     enabled: mode === 'list'
   });
   const detailQuery = useQuery({
@@ -171,7 +171,7 @@ function CustomerPage({ mode }: { mode: Mode }) {
         <FormTextField control={control} name="name" label={t('fullName')} placeholder="Александар Стојановски" autoComplete="name" InputProps={{ startAdornment: fieldIcon(<PersonRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
         <FormTextField control={control} name="phone" label={t('phone')} placeholder="+389 70 123 456" autoComplete="tel" InputProps={{ startAdornment: fieldIcon(<PhoneRoundedIcon />) }} />
         <FormTextField control={control} name="email" label={t('email')} placeholder="korisnik@email.com" type="email" autoComplete="email" InputProps={{ startAdornment: fieldIcon(<EmailRoundedIcon />) }} />
-        <FormTextField control={control} name="notes" label={t('address')} placeholder="ул. Пример 1, Скопје" autoComplete="street-address" multiline minRows={3} InputProps={{ startAdornment: fieldIcon(<HomeRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
+        <FormTextField control={control} name="notes" label={t('address')} placeholder="ул. Пример 1, Скопје" autoComplete="street-address" InputProps={{ startAdornment: fieldIcon(<HomeRoundedIcon />) }} sx={{ gridColumn: { sm: '1 / -1' } }} />
       </Box>
     </>
   );
@@ -179,6 +179,10 @@ function CustomerPage({ mode }: { mode: Mode }) {
   if (mode === 'list') {
     if (listQuery.isLoading) return <LoadingState />;
     if (listQuery.isError) return <ErrorState error={listQuery.error} />;
+    const resetSearch = () => {
+      setSearchTerm('');
+      setSubmittedSearchTerm('');
+    };
     return (
       <>
       <ResourceFrame title={t('customers')} actionLabel={t('newCustomer')} onAction={openCreateDialog} actionIcon={<AddRoundedIcon />}>
@@ -189,29 +193,35 @@ function CustomerPage({ mode }: { mode: Mode }) {
             component="form"
             onSubmit={(event) => {
               event.preventDefault();
-              setSubmittedFilters(filters);
+              setSubmittedSearchTerm(searchTerm);
             }}
           >
             <TextField
-              name="firstName"
-              label={t('firstName')}
-              value={filters.firstName}
-              onChange={(event) => setFilters((current) => ({ ...current, firstName: event.target.value }))}
-              fullWidth
-            />
-            <TextField
-              name="lastName"
-              label={t('lastName')}
-              value={filters.lastName}
-              onChange={(event) => setFilters((current) => ({ ...current, lastName: event.target.value }))}
+              name="customerSearch"
+              label={t('search')}
+              placeholder={t('searchCustomerPlaceholder')}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              InputProps={{
+                endAdornment: searchTerm ? (
+                  <InputAdornment position="end">
+                    <IconButton aria-label={t('clearCustomerQuery')} edge="end" onClick={() => setSearchTerm('')}>
+                      <ClearRoundedIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null
+              }}
               fullWidth
             />
             <Button type="submit" variant="outlined" startIcon={<SearchRoundedIcon />} sx={{ minWidth: 150 }}>
               {t('search')}
             </Button>
+            <Button type="button" variant="text" startIcon={<RestartAltRoundedIcon />} onClick={resetSearch} sx={{ minWidth: 120 }}>
+              {t('reset')}
+            </Button>
           </Stack>
         </Paper>
-        <CustomerTable customers={listQuery.data ?? []} />
+        <CustomerTable customers={listQuery.data ?? []} searchTerm={submittedSearchTerm} />
       </ResourceFrame>
         {createDialogOpen ? (
           <ResourceFormDialog
@@ -665,7 +675,7 @@ function ResourceFrame({ title, children, actionLabel, onAction, actionIcon }: {
   );
 }
 
-function CustomerTable({ customers }: { customers: Customer[] }) {
+function CustomerTable({ customers, searchTerm }: { customers: Customer[]; searchTerm: string }) {
   const { t } = useTranslation();
   if (!customers.length) return <EmptyState />;
   return (
@@ -675,14 +685,16 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
           <TableRow>
             <TableCell>{t('customer')}</TableCell>
             <TableCell>{t('phone')}</TableCell>
+            <TableCell>{t('email')}</TableCell>
             <TableCell align="right">{t('action')}</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {customers.map((customer) => (
             <TableRow key={customer.id} hover>
-              <TableCell>{customer.name}</TableCell>
-              <TableCell>{customer.phone}</TableCell>
+              <TableCell><HighlightedText value={customer.name} query={searchTerm} /></TableCell>
+              <TableCell><HighlightedText value={customer.phone} query={searchTerm} /></TableCell>
+              <TableCell><HighlightedText value={customer.email ?? '-'} query={searchTerm} /></TableCell>
               <TableCell align="right">
                 <Button component={RouterLink} to={`/customers/${customer.id}`}>
                   {t('details')}
@@ -874,10 +886,9 @@ function DetailCard({ rows }: { rows: Array<[string, string]> }) {
   );
 }
 
-function cleanFilters(filters: { firstName: string; lastName: string }) {
+function cleanCustomerSearch(query: string) {
   return {
-    firstName: filters.firstName.trim() || undefined,
-    lastName: filters.lastName.trim() || undefined
+    q: query.trim() || undefined
   };
 }
 

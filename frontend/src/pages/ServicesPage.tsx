@@ -74,7 +74,7 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
       performedAt: skopjeDate(new Date()),
       serviceTime: skopjeTime(new Date()),
       mileage: 0,
-      summary: 'Minor Service',
+      summary: '',
       laborCost: 0,
       parts: [],
       notes: ''

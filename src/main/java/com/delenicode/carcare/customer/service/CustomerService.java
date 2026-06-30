@@ -24,12 +24,9 @@ public class CustomerService {
   }
 
   @Transactional(readOnly = true)
-  public List<CustomerResponse> search(String firstName, String lastName) {
-    if (firstName != null && !firstName.isBlank()) {
-      return customers.findByFirstNameContainingIgnoreCaseAndDeletedFalse(firstName).stream().map(this::toResponse).toList();
-    }
-    if (lastName != null && !lastName.isBlank()) {
-      return customers.findByLastNameContainingIgnoreCaseAndDeletedFalse(lastName).stream().map(this::toResponse).toList();
+  public List<CustomerResponse> search(String query) {
+    if (hasText(query)) {
+      return customers.findBySearchTerm(query.trim()).stream().map(this::toResponse).toList();
     }
     return findAll();
   }
@@ -102,6 +99,10 @@ public class CustomerService {
 
   private String normalize(String value) {
     return value == null || value.isBlank() ? null : value.trim();
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
   }
 
   private record NameParts(String firstName, String lastName, String fullName) {

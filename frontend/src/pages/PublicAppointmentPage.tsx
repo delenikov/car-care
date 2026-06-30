@@ -55,7 +55,7 @@ export function PublicAppointmentPage() {
       fuelType: '',
       startsAt: '',
       endsAt: '',
-      serviceType: 'Minor Service',
+      serviceType: '',
       notes: ''
     }
   });

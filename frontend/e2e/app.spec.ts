@@ -446,13 +446,15 @@ test('searches customers and shows customer vehicles and service history', async
   });
 
   await page.goto('/customers');
-  await page.locator('input[name="firstName"]').fill('Ada');
-  await page.locator('input[name="lastName"]').fill('Lovelace');
+  await page.locator('input[name="customerSearch"]').fill('Ada Lovelace');
   await page.getByRole('button', { name: 'Пребарај' }).click();
 
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
-  expect(searchUrl).toContain('firstName=Ada');
-  expect(searchUrl).toContain('lastName=Lovelace');
+  expect(searchUrl).toContain('q=Ada');
+  await page.getByLabel('Исчисти пребарување клиенти').click();
+  await expect(page.locator('input[name="customerSearch"]')).toHaveValue('');
+  await page.getByRole('button', { name: 'Ресетирај' }).click();
+  await expect(page.locator('input[name="customerSearch"]')).toHaveValue('');
 
   await page.getByRole('link', { name: 'Детали' }).click();
   await expect(page.getByText('Возила на клиентот')).toBeVisible();

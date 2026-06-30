@@ -61,13 +61,19 @@ class CustomerServiceTest {
   }
 
   @Test
-  void searchUsesFirstOrLastName() {
+  void searchUsesUnifiedQueryAcrossNameEmailAndPhone() {
     Customer ada = customer(7L, "Ada", "Lovelace");
-    when(customers.findByFirstNameContainingIgnoreCaseAndDeletedFalse("Ada")).thenReturn(List.of(ada));
-    when(customers.findByLastNameContainingIgnoreCaseAndDeletedFalse("Lovelace")).thenReturn(List.of(ada));
+    when(customers.findBySearchTerm("Ada")).thenReturn(List.of(ada));
 
-    assertThat(customerService.search("Ada", null)).extracting("email").containsExactly("ada@carcare.test");
-    assertThat(customerService.search(null, "Lovelace")).extracting("email").containsExactly("ada@carcare.test");
+    assertThat(customerService.search("Ada")).extracting("email").containsExactly("ada@carcare.test");
+  }
+
+  @Test
+  void searchReturnsAllCustomersWhenQueryIsBlank() {
+    Customer ada = customer(7L, "Ada", "Lovelace");
+    when(customers.findByDeletedFalse()).thenReturn(List.of(ada));
+
+    assertThat(customerService.search("  ")).extracting("email").containsExactly("ada@carcare.test");
   }
 
   @Test

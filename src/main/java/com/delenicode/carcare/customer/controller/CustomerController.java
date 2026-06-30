@@ -37,8 +37,8 @@ public class CustomerController {
   private final CustomerLoyaltyService loyalty;
 
   @GetMapping
-  ApiResponse<List<CustomerResponse>> all(@RequestParam(required = false) String firstName, @RequestParam(required = false) String lastName) {
-    return ApiResponse.ok("Customers loaded", customers.search(firstName, lastName));
+  ApiResponse<List<CustomerResponse>> all(@RequestParam(required = false) String q) {
+    return ApiResponse.ok("Customers loaded", customers.search(q));
   }
 
   @GetMapping("/{id}")

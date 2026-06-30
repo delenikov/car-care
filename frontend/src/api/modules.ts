@@ -279,7 +279,7 @@ const toDocument = (document: BackendDocument): DocumentRecord => ({
 });
 
 export const customersApi = {
-  list: (filters?: { firstName?: string; lastName?: string }) => unwrap(http.get<BackendCustomer[]>('/api/customers', { params: filters })).then((customers) => customers.map(toCustomer)),
+  list: (filters?: { q?: string }) => unwrap(http.get<BackendCustomer[]>('/api/customers', { params: filters })).then((customers) => customers.map(toCustomer)),
   get: (id: string) => unwrap(http.get<BackendCustomer>(`/api/customers/${id}`)).then(toCustomer),
   create: (payload: Omit<Customer, 'id'>) => unwrap(http.post<BackendCustomer>('/api/customers', toCustomerRequest(payload))).then(toCustomer),
   update: (id: string, payload: Partial<Omit<Customer, 'id'>>) => unwrap(http.put<BackendCustomer>(`/api/customers/${id}`, toCustomerRequest({ name: '', phone: '', ...payload }))).then(toCustomer),
