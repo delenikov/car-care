@@ -102,10 +102,10 @@ export const theme = createTheme({
     }
   },
 
-  spacing: 8,
+  spacing: 5,
 
   shape: {
-    borderRadius: 18
+    borderRadius: 15
   },
 
   shadows: [

@@ -48,19 +48,17 @@ export function LoginPage() {
     <Box sx={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' } }}>
       <Box sx={{ p: { xs: 3, md: 7 }, display: 'flex', alignItems: 'center' }}>
         <Stack spacing={4} sx={{ maxWidth: 680 }}>
-          <Typography variant="overline" color="secondary.dark">
-            Automotive service management
-          </Typography>
           <Typography variant="h1" sx={{ fontSize: { xs: '3rem', md: '5.5rem' }, lineHeight: 0.9 }}>
-            Сервисот работи во ритам.
+            CarCare
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 560 }}>
-            Еден центар за клиенти, возила, термини, понуди и документи - дизајниран за брз прием и прецизна работилница.
+            Систем за управување со автомобилски
+            сервиси и сервисна историја
           </Typography>
         </Stack>
       </Box>
       <Box sx={{ display: 'grid', placeItems: 'center', p: { xs: 2, md: 5 } }}>
-        <Paper component="form" onSubmit={onSubmit} sx={{ width: '100%', maxWidth: 460, p: { xs: 3, md: 5 }, borderRadius: 5 }}>
+        <Paper component="form" onSubmit={onSubmit} sx={{ width: '100%', maxWidth: 460, p: { xs: 3, md: 5 }, borderRadius: 1 }}>
           <Stack spacing={3}>
             <Box>
               <Typography variant="h3">{t('login')}</Typography>
