@@ -28,6 +28,7 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import LockResetRoundedIcon from '@mui/icons-material/LockResetRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import { useAuth } from '../auth/AuthContext';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 import type { Role } from '../types';
 
 const drawerWidth = 280;
@@ -42,7 +43,7 @@ const navItems = [
   { to: '/admin', label: 'admin', icon: <AdminPanelSettingsRoundedIcon />, requiredRole: 'ROLE_ADMIN' as Role }
 ] satisfies Array<{ to: string; label: string; icon: ReactNode; requiredRole?: Role }>;
 
-function DrawerContent({ onNavigate }: { onNavigate?: () => void }) {
+function DrawerContent({ onNavigate, onOpenChangePassword }: { onNavigate?: () => void; onOpenChangePassword: () => void }) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -92,7 +93,15 @@ function DrawerContent({ onNavigate }: { onNavigate?: () => void }) {
           </Typography>
         </Box>
       </Stack>
-      <Button startIcon={<LockResetRoundedIcon />} component={NavLink} to="/change-password" color="primary" variant="outlined" onClick={onNavigate}>
+      <Button
+        startIcon={<LockResetRoundedIcon />}
+        color="primary"
+        variant="outlined"
+        onClick={() => {
+          onNavigate?.();
+          onOpenChangePassword();
+        }}
+      >
         {t('changePassword')}
       </Button>
       <Button startIcon={<LogoutRoundedIcon />} color="primary" variant="contained" onClick={handleLogout}>
@@ -104,6 +113,7 @@ function DrawerContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function PageShell() {
   const [open, setOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -118,14 +128,15 @@ export function PageShell() {
         </Toolbar>
       </AppBar>
       <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, width: drawerWidth, '& .MuiDrawer-paper': { width: drawerWidth, bgcolor: 'background.paper' } }} open>
-        <DrawerContent />
+        <DrawerContent onOpenChangePassword={() => setChangePasswordOpen(true)} />
       </Drawer>
       <Drawer variant="temporary" open={open} onClose={() => setOpen(false)} sx={{ display: { md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth, bgcolor: 'background.paper' } }}>
-        <DrawerContent onNavigate={() => setOpen(false)} />
+        <DrawerContent onNavigate={() => setOpen(false)} onOpenChangePassword={() => setChangePasswordOpen(true)} />
       </Drawer>
       <Box component="main" sx={{ flex: 1, width: { md: `calc(100% - ${drawerWidth}px)` }, pt: { xs: 9, md: 0 }, px: { xs: 2, sm: 3, lg: 5 }, py: { xs: 3, md: 5 } }}>
         <Outlet />
       </Box>
+      {changePasswordOpen ? <ChangePasswordDialog onClose={() => setChangePasswordOpen(false)} /> : null}
     </Box>
   );
 }

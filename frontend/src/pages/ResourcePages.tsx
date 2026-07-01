@@ -7,10 +7,6 @@ import {
   Button,
   CircularProgress,
   Divider,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
   InputAdornment,
   Paper,
@@ -29,9 +25,7 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded';
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded';
@@ -49,7 +43,9 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { customersApi, vehiclesApi } from '../api/modules';
 import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
+import { FormDialog } from '../components/FormDialog';
 import { FormTextField } from '../components/FormTextField';
+import { ListPagination, useListPagination } from '../components/ListPagination';
 import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { Customer, ServiceRecord, Vehicle } from '../types';
@@ -224,14 +220,14 @@ function CustomerPage({ mode }: { mode: Mode }) {
         <CustomerTable customers={listQuery.data ?? []} searchTerm={submittedSearchTerm} />
       </ResourceFrame>
         {createDialogOpen ? (
-          <ResourceFormDialog
+          <FormDialog
             title={t('newCustomer')}
             onClose={() => setCreateDialogOpen(false)}
             onSubmit={onSubmit}
             isSubmitting={formState.isSubmitting}
           >
             {customerForm}
-          </ResourceFormDialog>
+          </FormDialog>
         ) : null}
       </>
     );
@@ -283,14 +279,14 @@ function CustomerPage({ mode }: { mode: Mode }) {
           </Stack>
         </ResourceFrame>
         {editDialogOpen ? (
-          <ResourceFormDialog
+          <FormDialog
             title={`${t('edit')} ${detailQuery.data.name}`}
             onClose={() => setEditDialogOpen(false)}
             onSubmit={onSubmit}
             isSubmitting={formState.isSubmitting}
           >
             {customerForm}
-          </ResourceFormDialog>
+          </FormDialog>
         ) : null}
       </>
     );
@@ -308,14 +304,14 @@ function CustomerPage({ mode }: { mode: Mode }) {
             ]}
           />
         </ResourceFrame>
-        <ResourceFormDialog
+        <FormDialog
           title={formTitle}
-          closeTo={`/customers/${id}`}
+          onClose={() => navigate(`/customers/${id}`)}
           onSubmit={onSubmit}
           isSubmitting={formState.isSubmitting}
         >
           {customerForm}
-        </ResourceFormDialog>
+        </FormDialog>
       </>
     );
   }
@@ -498,14 +494,14 @@ function VehiclePage({ mode }: { mode: Mode }) {
         <VehicleTable vehicles={listQuery.data ?? []} searchTerm={submittedSearchTerm} />
       </ResourceFrame>
         {createDialogOpen ? (
-          <ResourceFormDialog
+          <FormDialog
             title={t('newVehicle')}
             onClose={() => setCreateDialogOpen(false)}
             onSubmit={onSubmit}
             isSubmitting={formState.isSubmitting}
           >
             {vehicleForm}
-          </ResourceFormDialog>
+          </FormDialog>
         ) : null}
       </>
     );
@@ -544,14 +540,14 @@ function VehiclePage({ mode }: { mode: Mode }) {
           </Stack>
         </ResourceFrame>
         {editDialogOpen ? (
-          <ResourceFormDialog
+          <FormDialog
             title={`${t('edit')} ${detailQuery.data.plate}`}
             onClose={() => setEditDialogOpen(false)}
             onSubmit={onSubmit}
             isSubmitting={formState.isSubmitting}
           >
             {vehicleForm}
-          </ResourceFormDialog>
+          </FormDialog>
         ) : null}
       </>
     );
@@ -572,83 +568,19 @@ function VehiclePage({ mode }: { mode: Mode }) {
             ]}
           />
         </ResourceFrame>
-        <ResourceFormDialog
+        <FormDialog
           title={formTitle}
-          closeTo={`/vehicles/${id}`}
+          onClose={() => navigate(`/vehicles/${id}`)}
           onSubmit={onSubmit}
           isSubmitting={formState.isSubmitting}
         >
           {vehicleForm}
-        </ResourceFormDialog>
+        </FormDialog>
       </>
     );
   }
 
   return <LoadingState />;
-}
-
-function ResourceFormDialog({
-  title,
-  closeTo,
-  onClose,
-  children,
-  onSubmit,
-  isSubmitting
-}: {
-  title: string;
-  closeTo?: string;
-  onClose?: () => void;
-  children: React.ReactNode;
-  onSubmit: React.FormEventHandler<HTMLFormElement>;
-  isSubmitting: boolean;
-}) {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const closeDialog = () => {
-    if (onClose) {
-      onClose();
-      return;
-    }
-    if (closeTo) {
-      navigate(closeTo);
-    }
-  };
-
-  return (
-    <Dialog
-      open
-      fullWidth
-      maxWidth="sm"
-      onClose={closeDialog}
-      PaperProps={{
-        component: 'form',
-        onSubmit,
-        sx: {
-          borderRadius: 2,
-          overflow: 'hidden',
-          backgroundImage: 'none'
-        }
-      }}
-    >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, px: 3, py: 2 }}>
-        <Typography variant="h5">{title}</Typography>
-        <IconButton onClick={closeDialog} aria-label={t('cancel')} edge="end">
-          <CloseRoundedIcon />
-        </IconButton>
-      </DialogTitle>
-      <Divider />
-      <DialogContent sx={{ p: 3 }}>{children}</DialogContent>
-      <Divider />
-      <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
-        <Button onClick={closeDialog} variant="outlined">
-          {t('cancel')}
-        </Button>
-        <Button type="submit" variant="contained" startIcon={<SaveRoundedIcon />} disabled={isSubmitting}>
-          {t('save')}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
 }
 
 function fieldIcon(icon: React.ReactNode) {
@@ -677,82 +609,104 @@ function ResourceFrame({ title, children, actionLabel, onAction, actionIcon }: {
 
 function CustomerTable({ customers, searchTerm }: { customers: Customer[]; searchTerm: string }) {
   const { t } = useTranslation();
+  const pagination = useListPagination(customers);
   if (!customers.length) return <EmptyState />;
   return (
-    <Paper sx={{ overflow: 'auto' }}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>{t('customer')}</TableCell>
-            <TableCell>{t('phone')}</TableCell>
-            <TableCell>{t('email')}</TableCell>
-            <TableCell align="right">{t('action')}</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {customers.map((customer) => (
-            <TableRow key={customer.id} hover>
-              <TableCell><HighlightedText value={customer.name} query={searchTerm} /></TableCell>
-              <TableCell><HighlightedText value={customer.phone} query={searchTerm} /></TableCell>
-              <TableCell><HighlightedText value={customer.email ?? '-'} query={searchTerm} /></TableCell>
-              <TableCell align="right">
-                <Button component={RouterLink} to={`/customers/${customer.id}`}>
-                  {t('details')}
-                </Button>
-              </TableCell>
+    <Paper sx={{ overflow: 'hidden' }}>
+      <Box sx={{ overflow: 'auto' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>{t('customer')}</TableCell>
+              <TableCell>{t('phone')}</TableCell>
+              <TableCell>{t('email')}</TableCell>
+              <TableCell align="right">{t('action')}</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {pagination.pageItems.map((customer) => (
+              <TableRow key={customer.id} hover>
+                <TableCell><HighlightedText value={customer.name} query={searchTerm} /></TableCell>
+                <TableCell><HighlightedText value={customer.phone} query={searchTerm} /></TableCell>
+                <TableCell><HighlightedText value={customer.email ?? '-'} query={searchTerm} /></TableCell>
+                <TableCell align="right">
+                  <Button component={RouterLink} to={`/customers/${customer.id}`}>
+                    {t('details')}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
+      <ListPagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        pageSize={pagination.pageSize}
+        totalItems={pagination.totalItems}
+        onPageChange={pagination.setPage}
+        onPageSizeChange={pagination.setPageSize}
+      />
     </Paper>
   );
 }
 
 function VehicleTable({ vehicles, searchTerm }: { vehicles: Vehicle[]; searchTerm: string }) {
   const { t } = useTranslation();
+  const pagination = useListPagination(vehicles);
   if (!vehicles.length) return <EmptyState />;
   return (
-    <Paper sx={{ overflow: 'auto' }}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>{t('licensePlate')}</TableCell>
-            <TableCell>{t('vin')}</TableCell>
-            <TableCell>{t('owner')}</TableCell>
-            <TableCell>{t('vehicle')}</TableCell>
-            <TableCell>{t('year')}</TableCell>
-            <TableCell>{t('fuel')}</TableCell>
-            <TableCell>{t('engine')}</TableCell>
-            <TableCell align="right">{t('action')}</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {vehicles.map((vehicle) => (
-            <TableRow key={vehicle.id} hover>
-              <TableCell><HighlightedText value={vehicle.plate} query={searchTerm} /></TableCell>
-              <TableCell>
-                <Tooltip title={vehicle.vin ?? '-'}>
-                  <Box component="span">
-                    <HighlightedText value={vehicle.vin ?? '-'} query={searchTerm} />
-                  </Box>
-                </Tooltip>
-              </TableCell>
-              <TableCell><HighlightedText value={vehicle.customerName ?? vehicle.customerId} query={searchTerm} /></TableCell>
-              <TableCell>
-                {vehicle.make} {vehicle.model}
-              </TableCell>
-              <TableCell>{vehicle.year}</TableCell>
-              <TableCell>{vehicle.fuelType ?? '-'}</TableCell>
-              <TableCell>{vehicle.engine ?? '-'}</TableCell>
-              <TableCell align="right">
-                <Button component={RouterLink} to={`/vehicles/${vehicle.id}`}>
-                  {t('details')}
-                </Button>
-              </TableCell>
+    <Paper sx={{ overflow: 'hidden' }}>
+      <Box sx={{ overflow: 'auto' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>{t('licensePlate')}</TableCell>
+              <TableCell>{t('vin')}</TableCell>
+              <TableCell>{t('owner')}</TableCell>
+              <TableCell>{t('vehicle')}</TableCell>
+              <TableCell>{t('year')}</TableCell>
+              <TableCell>{t('fuel')}</TableCell>
+              <TableCell>{t('engine')}</TableCell>
+              <TableCell align="right">{t('action')}</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {pagination.pageItems.map((vehicle) => (
+              <TableRow key={vehicle.id} hover>
+                <TableCell><HighlightedText value={vehicle.plate} query={searchTerm} /></TableCell>
+                <TableCell>
+                  <Tooltip title={vehicle.vin ?? '-'}>
+                    <Box component="span">
+                      <HighlightedText value={vehicle.vin ?? '-'} query={searchTerm} />
+                    </Box>
+                  </Tooltip>
+                </TableCell>
+                <TableCell><HighlightedText value={vehicle.customerName ?? vehicle.customerId} query={searchTerm} /></TableCell>
+                <TableCell>
+                  {vehicle.make} {vehicle.model}
+                </TableCell>
+                <TableCell>{vehicle.year}</TableCell>
+                <TableCell>{vehicle.fuelType ?? '-'}</TableCell>
+                <TableCell>{vehicle.engine ?? '-'}</TableCell>
+                <TableCell align="right">
+                  <Button component={RouterLink} to={`/vehicles/${vehicle.id}`}>
+                    {t('details')}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
+      <ListPagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        pageSize={pagination.pageSize}
+        totalItems={pagination.totalItems}
+        onPageChange={pagination.setPage}
+        onPageSizeChange={pagination.setPageSize}
+      />
     </Paper>
   );
 }
@@ -782,6 +736,7 @@ function HighlightedText({ value, query }: { value: string; query: string }) {
 
 function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: boolean }) {
   const { t } = useTranslation();
+  const pagination = useListPagination(vehicles, 5);
   return (
     <Paper sx={{ p: { xs: 3, md: 4 } }}>
       <Typography variant="h3" sx={{ mb: 2 }}>
@@ -790,36 +745,48 @@ function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: 
       {loading ? (
         <LoadingState />
       ) : vehicles.length ? (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>{t('licensePlate')}</TableCell>
-              <TableCell>{t('vehicle')}</TableCell>
-              <TableCell>{t('year')}</TableCell>
-              <TableCell>{t('fuel')}</TableCell>
-              <TableCell>{t('engine')}</TableCell>
-              <TableCell align="right">{t('action')}</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {vehicles.map((vehicle) => (
-              <TableRow key={vehicle.id}>
-                <TableCell>{vehicle.plate}</TableCell>
-                <TableCell>
-                  {vehicle.make} {vehicle.model}
-                </TableCell>
-                <TableCell>{vehicle.year}</TableCell>
-                <TableCell>{vehicle.fuelType ?? '-'}</TableCell>
-                <TableCell>{vehicle.engine ?? '-'}</TableCell>
-                <TableCell align="right">
-                  <Button component={RouterLink} to={`/services/new?customerId=${vehicle.customerId}&vehicleId=${vehicle.id}`} startIcon={<AddRoundedIcon />}>
-                    {t('newService')}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <>
+          <Box sx={{ overflow: 'auto' }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('licensePlate')}</TableCell>
+                  <TableCell>{t('vehicle')}</TableCell>
+                  <TableCell>{t('year')}</TableCell>
+                  <TableCell>{t('fuel')}</TableCell>
+                  <TableCell>{t('engine')}</TableCell>
+                  <TableCell align="right">{t('action')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pagination.pageItems.map((vehicle) => (
+                  <TableRow key={vehicle.id}>
+                    <TableCell>{vehicle.plate}</TableCell>
+                    <TableCell>
+                      {vehicle.make} {vehicle.model}
+                    </TableCell>
+                    <TableCell>{vehicle.year}</TableCell>
+                    <TableCell>{vehicle.fuelType ?? '-'}</TableCell>
+                    <TableCell>{vehicle.engine ?? '-'}</TableCell>
+                    <TableCell align="right">
+                      <Button component={RouterLink} to={`/services/new?customerId=${vehicle.customerId}&vehicleId=${vehicle.id}`} startIcon={<AddRoundedIcon />}>
+                        {t('newService')}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+          <ListPagination
+            page={pagination.page}
+            pageCount={pagination.pageCount}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </>
       ) : (
         <EmptyState />
       )}
@@ -829,6 +796,7 @@ function RelatedVehicles({ vehicles, loading }: { vehicles: Vehicle[]; loading: 
 
 function ServiceHistory({ records, loading }: { records: ServiceRecord[]; loading: boolean }) {
   const { t } = useTranslation();
+  const pagination = useListPagination(records, 5);
   return (
     <Paper sx={{ p: { xs: 3, md: 4 } }}>
       <Typography variant="h3" sx={{ mb: 2 }}>
@@ -837,33 +805,44 @@ function ServiceHistory({ records, loading }: { records: ServiceRecord[]; loadin
       {loading ? (
         <LoadingState />
       ) : records.length ? (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>{t('date')}</TableCell>
-              <TableCell>{t('service')}</TableCell>
-              <TableCell>{t('mileage')}</TableCell>
-              <TableCell align="right">{t('total')}</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {records.map((record) => (
-              <TableRow key={record.id} hover component={RouterLink} to={`/services/${record.id}`} sx={{ cursor: 'pointer' }}>
-                <TableCell>{record.performedAt}</TableCell>
-                <TableCell>{record.summary}</TableCell>
-                <TableCell>{record.mileage.toLocaleString('mk-MK')} km</TableCell>
-                <TableCell align="right">{record.cost.toLocaleString('mk-MK')} ден.</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <>
+          <Box sx={{ overflow: 'auto' }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('date')}</TableCell>
+                  <TableCell>{t('service')}</TableCell>
+                  <TableCell>{t('mileage')}</TableCell>
+                  <TableCell align="right">{t('total')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pagination.pageItems.map((record) => (
+                  <TableRow key={record.id} hover component={RouterLink} to={`/services/${record.id}`} sx={{ cursor: 'pointer' }}>
+                    <TableCell>{record.performedAt}</TableCell>
+                    <TableCell>{record.summary}</TableCell>
+                    <TableCell>{record.mileage.toLocaleString('mk-MK')} km</TableCell>
+                    <TableCell align="right">{record.cost.toLocaleString('mk-MK')} ден.</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+          <ListPagination
+            page={pagination.page}
+            pageCount={pagination.pageCount}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </>
       ) : (
         <EmptyState />
       )}
     </Paper>
   );
 }
-
 function DetailCard({ rows }: { rows: Array<[string, string]> }) {
   return (
     <Paper sx={{ p: { xs: 3, md: 4 } }}>

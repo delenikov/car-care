@@ -59,11 +59,11 @@ describe('CarCare frontend baseline', () => {
   it('shows the change password message returned by the API', async () => {
     const user = userEvent.setup();
     vi.spyOn(authApi, 'changePassword').mockRejectedValueOnce({ response: { data: { message: 'Тековната лозинка е погрешна' } } });
-    const { container } = renderWithProviders(<ChangePasswordPage />);
+    renderWithProviders(<ChangePasswordPage />);
 
-    await user.type(container.querySelector('input[name="currentPassword"]')!, 'wrong-password');
-    await user.type(container.querySelector('input[name="newPassword"]')!, 'password456');
-    await user.click(screen.getByRole('button'));
+    await user.type(document.body.querySelector('input[name="currentPassword"]')!, 'wrong-password');
+    await user.type(document.body.querySelector('input[name="newPassword"]')!, 'password456');
+    await user.click(document.body.querySelector('button[type="submit"]')!);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Тековната лозинка е погрешна');
   });

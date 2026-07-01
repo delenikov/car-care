@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { documentsApi } from '../api/modules';
 import { apiErrorMessage } from '../components/ApiErrorAlert';
+import { ListPagination, useListPagination } from '../components/ListPagination';
 import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { DocumentRecord } from '../types';
@@ -18,6 +19,7 @@ export function DocumentsPage() {
   const sendMutation = useMutation({ mutationFn: documentsApi.send });
   const exportMutation = useMutation({ mutationFn: documentsApi.exportPdf });
   const previewMutation = useMutation({ mutationFn: documentsApi.exportPdf });
+  const pagination = useListPagination(data);
 
   useEffect(() => {
     return () => {
@@ -35,76 +37,86 @@ export function DocumentsPage() {
       <Typography variant="h2">{t('documents')}</Typography>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 0.8fr' }, gap: 3 }}>
         {data.length ? (
-          <Paper sx={{ overflow: 'auto' }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('document')}</TableCell>
-                  <TableCell>{t('type')}</TableCell>
-                  <TableCell>{t('serviceRecord')}</TableCell>
-                  <TableCell align="right">{t('actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.map((document) => (
-                  <TableRow key={document.id} hover>
-                    <TableCell>{document.title}</TableCell>
-                    <TableCell>{document.type}</TableCell>
-                    <TableCell>{document.serviceRecordId ?? '-'}</TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <Button
-                          disabled={previewMutation.isPending}
-                          onClick={async () => {
-                            try {
-                              const response = await previewMutation.mutateAsync(document.id);
-                              const nextUrl = URL.createObjectURL(response.data);
-                              setPreviewUrl((currentUrl) => {
-                                if (currentUrl) {
-                                  URL.revokeObjectURL(currentUrl);
-                                }
-                                return nextUrl;
-                              });
-                              setSelected(document);
-                            } catch (error) {
-                              showToast(apiErrorMessage(error, t('previewFailed')), 'error');
-                            }
-                          }}
-                        >
-                          {t('view')}
-                        </Button>
-                        <Button
-                          onClick={async () => {
-                            try {
-                              const response = await exportMutation.mutateAsync(document.id);
-                              downloadBlob(response.data, document.title || `document-${document.id}.pdf`);
-                              showToast('PDF');
-                            } catch (error) {
-                              showToast(apiErrorMessage(error, t('downloadFailed')), 'error');
-                            }
-                          }}
-                        >
-                          PDF
-                        </Button>
-                        <Button
-                          variant="contained"
-                          onClick={async () => {
-                            try {
-                              await sendMutation.mutateAsync(document.id);
-                              showToast(t('send'));
-                            } catch (error) {
-                              showToast(apiErrorMessage(error, t('sendFailed')), 'error');
-                            }
-                          }}
-                        >
-                          {t('send')}
-                        </Button>
-                      </Stack>
-                    </TableCell>
+          <Paper sx={{ overflow: 'hidden' }}>
+            <Box sx={{ overflow: 'auto' }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('document')}</TableCell>
+                    <TableCell>{t('type')}</TableCell>
+                    <TableCell>{t('serviceRecord')}</TableCell>
+                    <TableCell align="right">{t('actions')}</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {pagination.pageItems.map((document) => (
+                    <TableRow key={document.id} hover>
+                      <TableCell>{document.title}</TableCell>
+                      <TableCell>{document.type}</TableCell>
+                      <TableCell>{document.serviceRecordId ?? '-'}</TableCell>
+                      <TableCell align="right">
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Button
+                            disabled={previewMutation.isPending}
+                            onClick={async () => {
+                              try {
+                                const response = await previewMutation.mutateAsync(document.id);
+                                const nextUrl = URL.createObjectURL(response.data);
+                                setPreviewUrl((currentUrl) => {
+                                  if (currentUrl) {
+                                    URL.revokeObjectURL(currentUrl);
+                                  }
+                                  return nextUrl;
+                                });
+                                setSelected(document);
+                              } catch (error) {
+                                showToast(apiErrorMessage(error, t('previewFailed')), 'error');
+                              }
+                            }}
+                          >
+                            {t('view')}
+                          </Button>
+                          <Button
+                            onClick={async () => {
+                              try {
+                                const response = await exportMutation.mutateAsync(document.id);
+                                downloadBlob(response.data, document.title || `document-${document.id}.pdf`);
+                                showToast('PDF');
+                              } catch (error) {
+                                showToast(apiErrorMessage(error, t('downloadFailed')), 'error');
+                              }
+                            }}
+                          >
+                            PDF
+                          </Button>
+                          <Button
+                            variant="contained"
+                            onClick={async () => {
+                              try {
+                                await sendMutation.mutateAsync(document.id);
+                                showToast(t('send'));
+                              } catch (error) {
+                                showToast(apiErrorMessage(error, t('sendFailed')), 'error');
+                              }
+                            }}
+                          >
+                            {t('send')}
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+            <ListPagination
+              page={pagination.page}
+              pageCount={pagination.pageCount}
+              pageSize={pagination.pageSize}
+              totalItems={pagination.totalItems}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
           </Paper>
         ) : (
           <EmptyState />

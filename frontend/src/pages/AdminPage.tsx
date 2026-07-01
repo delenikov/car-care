@@ -13,7 +13,9 @@ import { z } from 'zod';
 import { adminUsersApi } from '../api/modules';
 import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { FormDialog } from '../components/FormDialog';
 import { FormTextField } from '../components/FormTextField';
+import { ListPagination, useListPagination } from '../components/ListPagination';
 import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { Role, User } from '../types';
@@ -52,6 +54,8 @@ function EmployeePanel() {
   const [formOpen, setFormOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const users = usersQuery.data ?? [];
+  const usersPagination = useListPagination(users);
 
   const { control, handleSubmit, reset, setError, formState } = useForm<EmployeeForm>({
     resolver: zodResolver(employeeSchema) as never,
@@ -111,6 +115,30 @@ function EmployeePanel() {
     }
   };
 
+  const closeForm = () => {
+    setEditingId(null);
+    setFormOpen(false);
+    setErrorMessage('');
+    reset(emptyEmployeeForm());
+  };
+
+  const employeeForm = (
+    <Stack spacing={2.5}>
+      <ApiErrorAlert message={errorMessage} />
+      <FormTextField control={control} name="fullName" label={t('name')} />
+      <FormTextField control={control} name="email" label={t('email')} />
+      <FormTextField control={control} name="password" label={t('password')} type="password" helperText={editingId ? t('newPasswordHint') : undefined} />
+      <FormTextField control={control} name="enabled" label={t('active')} select SelectProps={{ native: true }}>
+        <option value="true">{t('active')}</option>
+        <option value="false">{t('inactive')}</option>
+      </FormTextField>
+      <FormTextField control={control} name="role" label={t('role')} select SelectProps={{ native: true }}>
+        <option value="EMPLOYEE">{t('employee')}</option>
+        <option value="ADMIN">{t('admin')}</option>
+      </FormTextField>
+    </Stack>
+  );
+
   if (usersQuery.isLoading) return <LoadingState />;
   if (usersQuery.isError) return <ErrorState error={usersQuery.error} />;
 
@@ -121,64 +149,63 @@ function EmployeePanel() {
           {t('newEmployee')}
         </Button>
       </Stack>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: formOpen ? '1.2fr 0.8fr' : '1fr' }, gap: 3 }}>
-        <Paper sx={{ overflow: 'auto' }}>
-        {(usersQuery.data ?? []).length ? (
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('name')}</TableCell>
-                <TableCell>{t('email')}</TableCell>
-                <TableCell>{t('role')}</TableCell>
-                <TableCell>{t('status')}</TableCell>
-                <TableCell align="right">{t('actions')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {(usersQuery.data ?? []).map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.fullName}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell><RoleChip role={roleToFormValue(user.roles?.[0])} /></TableCell>
-                  <TableCell><Chip label={user.enabled ? 'ACTIVE' : 'DISABLED'} color={user.enabled ? 'success' : 'default'} size="small" /></TableCell>
-                  <TableCell align="right">
-                    <IconButton aria-label={`edit ${user.email}`} onClick={() => startEdit(user)}>
-                      <EditRoundedIcon />
-                    </IconButton>
-                    <IconButton aria-label={`delete ${user.email}`} disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(user)}>
-                      <DeleteRoundedIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      <Box>
+        <Paper sx={{ overflow: 'hidden' }}>
+        {users.length ? (
+          <>
+            <Box sx={{ overflow: 'auto' }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('name')}</TableCell>
+                    <TableCell>{t('email')}</TableCell>
+                    <TableCell>{t('role')}</TableCell>
+                    <TableCell>{t('status')}</TableCell>
+                    <TableCell align="right">{t('actions')}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {usersPagination.pageItems.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.fullName}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell><RoleChip role={roleToFormValue(user.roles?.[0])} /></TableCell>
+                      <TableCell><Chip label={user.enabled ? 'ACTIVE' : 'DISABLED'} color={user.enabled ? 'success' : 'default'} size="small" /></TableCell>
+                      <TableCell align="right">
+                        <IconButton aria-label={`edit ${user.email}`} onClick={() => startEdit(user)}>
+                          <EditRoundedIcon />
+                        </IconButton>
+                        <IconButton aria-label={`delete ${user.email}`} disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(user)}>
+                          <DeleteRoundedIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+            <ListPagination
+              page={usersPagination.page}
+              pageCount={usersPagination.pageCount}
+              pageSize={usersPagination.pageSize}
+              totalItems={usersPagination.totalItems}
+              onPageChange={usersPagination.setPage}
+              onPageSizeChange={usersPagination.setPageSize}
+            />
+          </>
         ) : <EmptyState />}
         </Paper>
-        {formOpen ? (
-          <Paper component="form" onSubmit={onSubmit} sx={{ p: { xs: 3, md: 4 }, alignSelf: 'start' }}>
-            <Stack spacing={2.5}>
-              <Typography variant="h4">{editingId ? t('editEmployee') : t('newEmployee')}</Typography>
-              <ApiErrorAlert message={errorMessage} />
-              <FormTextField control={control} name="fullName" label={t('name')} />
-              <FormTextField control={control} name="email" label={t('email')} />
-              <FormTextField control={control} name="password" label={t('password')} type="password" helperText={editingId ? t('newPasswordHint') : undefined} />
-              <FormTextField control={control} name="enabled" label={t('active')} select SelectProps={{ native: true }}>
-                <option value="true">{t('active')}</option>
-                <option value="false">{t('inactive')}</option>
-              </FormTextField>
-              <FormTextField control={control} name="role" label={t('role')} select SelectProps={{ native: true }}>
-                <option value="EMPLOYEE">{t('employee')}</option>
-                <option value="ADMIN">{t('admin')}</option>
-              </FormTextField>
-              <Button type="submit" variant="contained" disabled={formState.isSubmitting}>{t('save')}</Button>
-              <Button type="button" variant="outlined" onClick={() => { setEditingId(null); setFormOpen(false); reset(emptyEmployeeForm()); }}>
-              {t('cancel')}
-            </Button>
-            </Stack>
-          </Paper>
-        ) : null}
       </Box>
+      {formOpen ? (
+        <FormDialog
+          title={editingId ? t('editEmployee') : t('newEmployee')}
+          onClose={closeForm}
+          onSubmit={onSubmit}
+          isSubmitting={formState.isSubmitting}
+        >
+          {employeeForm}
+        </FormDialog>
+      ) : null}
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={t('deleteEmployee')}

@@ -28,6 +28,7 @@ import { customersApi, serviceRecordsApi } from '../api/modules';
 import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { DateInput, TimeInput } from '../components/DateTimeInputs';
 import { FormTextField } from '../components/FormTextField';
+import { ListPagination, useListPagination } from '../components/ListPagination';
 import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { Customer, ServiceRecord, Vehicle } from '../types';
@@ -97,6 +98,8 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
   const selectedVehicle = vehicles.find((vehicle) => String(vehicle.id) === selectedVehicleId) ?? null;
   const partsCost = sumParts(watchedParts);
   const totalCost = partsCost + (Number(watchedLaborCost) || 0);
+  const records = listQuery.data ?? [];
+  const recordsPagination = useListPagination(records);
 
   if (mode === 'create') {
     const onSubmit = handleSubmit(async (values) => {
@@ -364,8 +367,6 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
 
   if (listQuery.isLoading) return <LoadingState />;
   if (listQuery.isError) return <ErrorState error={listQuery.error} />;
-  const records = listQuery.data ?? [];
-
   return (
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
@@ -375,33 +376,43 @@ export function ServicesPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'de
         </Button>
       </Stack>
       {records.length ? (
-        <Paper sx={{ overflow: 'auto' }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('customer')}</TableCell>
-                <TableCell>{t('vehicle')}</TableCell>
-                <TableCell>{t('date')}</TableCell>
-                <TableCell>{t('service')}</TableCell>
-                <TableCell align="right">{t('parts')}</TableCell>
-                <TableCell align="right">{t('labor')}</TableCell>
-                <TableCell align="right">{t('total')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {records.map((record) => (
-                <TableRow key={record.id} hover component={RouterLink} to={`/services/${record.id}`} sx={{ cursor: 'pointer' }}>
-                  <TableCell>{record.customerName ?? record.customerId}</TableCell>
-                  <TableCell>{serviceVehicleLabel(record)}</TableCell>
-                  <TableCell>{record.performedAt}</TableCell>
-                  <TableCell>{record.summary}</TableCell>
-                  <TableCell align="right">{record.partsCost.toLocaleString('mk-MK')} ден.</TableCell>
-                  <TableCell align="right">{record.laborCost.toLocaleString('mk-MK')} ден.</TableCell>
-                  <TableCell align="right">{record.cost.toLocaleString('mk-MK')} ден.</TableCell>
+        <Paper sx={{ overflow: 'hidden' }}>
+          <Box sx={{ overflow: 'auto' }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('customer')}</TableCell>
+                  <TableCell>{t('vehicle')}</TableCell>
+                  <TableCell>{t('date')}</TableCell>
+                  <TableCell>{t('service')}</TableCell>
+                  <TableCell align="right">{t('parts')}</TableCell>
+                  <TableCell align="right">{t('labor')}</TableCell>
+                  <TableCell align="right">{t('total')}</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {recordsPagination.pageItems.map((record) => (
+                  <TableRow key={record.id} hover component={RouterLink} to={`/services/${record.id}`} sx={{ cursor: 'pointer' }}>
+                    <TableCell>{record.customerName ?? record.customerId}</TableCell>
+                    <TableCell>{serviceVehicleLabel(record)}</TableCell>
+                    <TableCell>{record.performedAt}</TableCell>
+                    <TableCell>{record.summary}</TableCell>
+                    <TableCell align="right">{record.partsCost.toLocaleString('mk-MK')} ден.</TableCell>
+                    <TableCell align="right">{record.laborCost.toLocaleString('mk-MK')} ден.</TableCell>
+                    <TableCell align="right">{record.cost.toLocaleString('mk-MK')} ден.</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+          <ListPagination
+            page={recordsPagination.page}
+            pageCount={recordsPagination.pageCount}
+            pageSize={recordsPagination.pageSize}
+            totalItems={recordsPagination.totalItems}
+            onPageChange={recordsPagination.setPage}
+            onPageSizeChange={recordsPagination.setPageSize}
+          />
         </Paper>
       ) : (
         <EmptyState />

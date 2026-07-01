@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { customersApi, offersApi } from '../api/modules';
 import { ApiErrorAlert, apiErrorMessage } from '../components/ApiErrorAlert';
 import { FormTextField } from '../components/FormTextField';
+import { ListPagination, useListPagination } from '../components/ListPagination';
 import { EmptyState, ErrorState, LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ToastProvider';
 import type { Customer, Offer, OfferPart, Vehicle } from '../types';
@@ -70,6 +71,8 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
   const discountPercent = loyaltyQuery.data?.discountPercent ?? 0;
   const discountAmount = loyaltyQuery.data?.loyal ? Math.round((subtotalCost * discountPercent)) / 100 : 0;
   const totalCost = subtotalCost - discountAmount;
+  const offers = listQuery.data ?? [];
+  const offersPagination = useListPagination(offers);
 
   if (mode === 'create') {
     const onSubmit = handleSubmit(async (values) => {
@@ -351,8 +354,6 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
 
   if (listQuery.isLoading) return <LoadingState />;
   if (listQuery.isError) return <ErrorState error={listQuery.error} />;
-  const offers = listQuery.data ?? [];
-
   return (
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
@@ -362,35 +363,45 @@ export function OffersPage({ mode = 'list' }: { mode?: 'list' | 'create' | 'deta
         </Button>
       </Stack>
       {offers.length ? (
-        <Paper sx={{ overflow: 'auto' }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('offer')}</TableCell>
-                <TableCell>{t('customer')}</TableCell>
-                <TableCell>{t('status')}</TableCell>
-                <TableCell align="right">{t('parts')}</TableCell>
-                <TableCell align="right">{t('labor')}</TableCell>
-                <TableCell align="right">{t('discount')}</TableCell>
-                <TableCell align="right">{t('total')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {offers.map((offer) => (
-                <TableRow key={offer.id} hover component={RouterLink} to={`/offers/${offer.id}`} sx={{ cursor: 'pointer' }}>
-                  <TableCell>{offer.title}</TableCell>
-                  <TableCell>{offer.customerName ?? offer.customerId}</TableCell>
-                  <TableCell>
-                    <Chip label={offer.status} color={offer.status === 'SENT' ? 'secondary' : offer.status === 'DELIVERY_FAILED' ? 'error' : 'warning'} size="small" />
-                  </TableCell>
-                  <TableCell align="right">{offer.partsCost.toLocaleString('mk-MK')} ден.</TableCell>
-                  <TableCell align="right">{offer.laborCost.toLocaleString('mk-MK')} ден.</TableCell>
-                  <TableCell align="right">-{offer.discountAmount.toLocaleString('mk-MK')} ден.</TableCell>
-                  <TableCell align="right">{offer.total.toLocaleString('mk-MK')} ден.</TableCell>
+        <Paper sx={{ overflow: 'hidden' }}>
+          <Box sx={{ overflow: 'auto' }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('offer')}</TableCell>
+                  <TableCell>{t('customer')}</TableCell>
+                  <TableCell>{t('status')}</TableCell>
+                  <TableCell align="right">{t('parts')}</TableCell>
+                  <TableCell align="right">{t('labor')}</TableCell>
+                  <TableCell align="right">{t('discount')}</TableCell>
+                  <TableCell align="right">{t('total')}</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {offersPagination.pageItems.map((offer) => (
+                  <TableRow key={offer.id} hover component={RouterLink} to={`/offers/${offer.id}`} sx={{ cursor: 'pointer' }}>
+                    <TableCell>{offer.title}</TableCell>
+                    <TableCell>{offer.customerName ?? offer.customerId}</TableCell>
+                    <TableCell>
+                      <Chip label={offer.status} color={offer.status === 'SENT' ? 'secondary' : offer.status === 'DELIVERY_FAILED' ? 'error' : 'warning'} size="small" />
+                    </TableCell>
+                    <TableCell align="right">{offer.partsCost.toLocaleString('mk-MK')} ден.</TableCell>
+                    <TableCell align="right">{offer.laborCost.toLocaleString('mk-MK')} ден.</TableCell>
+                    <TableCell align="right">-{offer.discountAmount.toLocaleString('mk-MK')} ден.</TableCell>
+                    <TableCell align="right">{offer.total.toLocaleString('mk-MK')} ден.</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+          <ListPagination
+            page={offersPagination.page}
+            pageCount={offersPagination.pageCount}
+            pageSize={offersPagination.pageSize}
+            totalItems={offersPagination.totalItems}
+            onPageChange={offersPagination.setPage}
+            onPageSizeChange={offersPagination.setPageSize}
+          />
         </Paper>
       ) : (
         <EmptyState />
